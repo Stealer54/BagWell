@@ -18,7 +18,7 @@ tree = bot.tree
 
 # --- Модалка для сбора данных ---
 class ChannelInfoModal(Modal, title="Данные для создания канала"):
-    nickname = TextInput(label="Ник", placeholder="Пример: Jacky_Angel")
+    nickname = TextInput(label="Ник", placeholder="Пример: Jacob_Stealer")
     date = TextInput(label="Дата", placeholder="Пример: 06.06.2025")
     level = TextInput(label="LVL", placeholder="Пример: 2")
 
