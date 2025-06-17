@@ -2,16 +2,15 @@ import os
 import discord
 from discord.ext import commands
 from discord import app_commands, Interaction
-from discord.ui import View, Button, Select, Modal, TextInput
+from discord.ui import View, Select, Modal, TextInput
 from dotenv import load_dotenv
 
-from dotenv import load_dotenv
-import os
-
+# Загрузка .env файла
 load_dotenv()
-print("TOKEN:", os.getenv("DISCORD_TOKEN"))  # ← добавь для проверки
-CATEGORY_NAME = "Характеристики"  # Название категории
+TOKEN = os.getenv("DISCORD_TOKEN")  # ← Теперь переменная определена!
+CATEGORY_NAME = "Характеристики"     # Название категории
 
+# Настройка бота
 intents = discord.Intents.default()
 intents.message_content = True
 intents.guilds = True
@@ -63,16 +62,19 @@ class ChannelTypeSelect(Select):
     async def callback(self, interaction: Interaction):
         await interaction.response.send_modal(ChannelInfoModal(channel_type=self.values[0]))
 
+# --- View с селектом ---
 class CreateChannelView(View):
     def __init__(self):
         super().__init__(timeout=None)
         self.add_item(ChannelTypeSelect())
 
+# --- Команда /create ---
 @tree.command(name="create", description="Создать канал по заявке")
 async def create(interaction: Interaction):
     view = CreateChannelView()
     await interaction.response.send_message("🔽 Выберите тип заявки:", view=view, ephemeral=True)
 
+# --- Запуск и синхронизация ---
 @bot.event
 async def on_ready():
     try:
