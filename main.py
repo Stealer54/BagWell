@@ -31,7 +31,7 @@ class ChannelInfoModal(Modal, title="Данные для создания кан
         category = discord.utils.get(guild.categories, name=CATEGORY_NAME)
 
         if category is None:
-            await interaction.response.send_message("❌ Категория 'Тест' не найдена.", ephemeral=True)
+            await interaction.response.send_message("❌ Категория 'Характеристики' не найдена.", ephemeral=True)
             return
 
         channel_name = self.nickname.value.strip().replace(" ", "_")
