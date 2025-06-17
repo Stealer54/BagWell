@@ -5,8 +5,11 @@ from discord import app_commands, Interaction
 from discord.ui import View, Button, Select, Modal, TextInput
 from dotenv import load_dotenv
 
+from dotenv import load_dotenv
+import os
+
 load_dotenv()
-TOKEN = os.getenv("DISCORD_TOKEN")
+print("TOKEN:", os.getenv("DISCORD_TOKEN"))  # ← добавь для проверки
 CATEGORY_NAME = "Характеристики"  # Название категории
 
 intents = discord.Intents.default()
