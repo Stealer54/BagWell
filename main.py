@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
-CATEGORY_NAME = "Тест"  # Название категории
+CATEGORY_NAME = "Характеристики"  # Название категории
 
 intents = discord.Intents.default()
 intents.message_content = True
