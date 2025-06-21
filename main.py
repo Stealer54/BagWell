@@ -84,4 +84,34 @@ async def on_ready():
         print(f"❌ Ошибка sync: {e}")
     print(f"🔗 Logged in as {bot.user}")
 
+# --- Модалка для отправки логов ---
+class LogModal(Modal, title="Добавить лог"):
+    def __init__(self):
+        super().__init__()
+        self.type_input = TextInput(label="Тип (Заслуги или Косяк)", placeholder="Пример: Заслуги", max_length=20)
+        self.desc_input = TextInput(label="Описание", placeholder="Что сделал игрок", style=discord.TextStyle.paragraph)
+        self.add_item(self.type_input)
+        self.add_item(self.desc_input)
+
+    async def on_submit(self, interaction: Interaction):
+        log_type = self.type_input.value.strip()
+        description = self.desc_input.value.strip()
+
+        if log_type.lower() not in ["заслуги", "косяк"]:
+            await interaction.response.send_message("❌ Тип должен быть 'Заслуги' или 'Косяк'.", ephemeral=True)
+            return
+
+        color = discord.Color.green() if log_type.lower() == "заслуги" else discord.Color.red()
+
+        embed = discord.Embed(title=f"**{log_type.upper()}**", description=description, color=color)
+        embed.set_footer(text=f"Добавлено: {interaction.user}", icon_url=interaction.user.display_avatar.url)
+
+        await interaction.channel.send(embed=embed)
+        await interaction.response.send_message("✅ Лог добавлен!", ephemeral=True)
+
+# --- Slash-команда /log ---
+@tree.command(name="log", description="Добавить запись (Заслуги или Косяк)")
+async def log(interaction: Interaction):
+    await interaction.response.send_modal(LogModal())
+
 bot.run(TOKEN)
