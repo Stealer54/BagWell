@@ -84,34 +84,48 @@ async def on_ready():
         print(f"❌ Ошибка sync: {e}")
     print(f"🔗 Logged in as {bot.user}")
 
-# --- Модалка для отправки логов ---
-class LogModal(Modal, title="Добавить лог"):
+# --- Новый выпадающий список ---
+class LogTypeSelect(Select):
     def __init__(self):
+        options = [
+            discord.SelectOption(label="Заслуги", emoji="✅"),
+            discord.SelectOption(label="Косяк", emoji="⚠️")
+        ]
+        super().__init__(placeholder="Выберите тип", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: Interaction):
+        await interaction.response.send_modal(LogDescriptionModal(log_type=self.values[0]))
+
+# --- Модалка только с описанием ---
+class LogDescriptionModal(Modal, title="Описание действия"):
+    def __init__(self, log_type: str):
         super().__init__()
-        self.type_input = TextInput(label="Тип (Заслуги или Косяк)", placeholder="Пример: Заслуги", max_length=20)
-        self.desc_input = TextInput(label="Описание", placeholder="Что сделал игрок", style=discord.TextStyle.paragraph)
-        self.add_item(self.type_input)
+        self.log_type = log_type
+        self.desc_input = TextInput(label="Что сделал игрок", style=discord.TextStyle.paragraph)
         self.add_item(self.desc_input)
 
     async def on_submit(self, interaction: Interaction):
-        log_type = self.type_input.value.strip()
         description = self.desc_input.value.strip()
+        color = discord.Color.green() if self.log_type == "Заслуги" else discord.Color.red()
 
-        if log_type.lower() not in ["заслуги", "косяк"]:
-            await interaction.response.send_message("❌ Тип должен быть 'Заслуги' или 'Косяк'.", ephemeral=True)
-            return
-
-        color = discord.Color.green() if log_type.lower() == "заслуги" else discord.Color.red()
-
-        embed = discord.Embed(title=f"**{log_type.upper()}**", description=description, color=color)
-        embed.set_footer(text=f"Добавлено: {interaction.user}", icon_url=interaction.user.display_avatar.url)
+        embed = discord.Embed(
+            title=f"**{self.log_type.upper()}**",
+            description=description,
+            color=color
+        )
 
         await interaction.channel.send(embed=embed)
         await interaction.response.send_message("✅ Лог добавлен!", ephemeral=True)
 
+# --- View с выбором типа ---
+class LogView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(LogTypeSelect())
+
 # --- Slash-команда /log ---
-@tree.command(name="log", description="Добавить запись (Заслуги или Косяк)")
+@tree.command(name="log", description="Добавить лог (Заслуги или Косяк)")
 async def log(interaction: Interaction):
-    await interaction.response.send_modal(LogModal())
+    await interaction.response.send_message("Выберите тип:", view=LogView(), ephemeral=True)
 
 bot.run(TOKEN)
