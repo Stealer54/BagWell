@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 
 # Загрузка .env файла
 load_dotenv()
-TOKEN = os.getenv("DISCORD_TOKEN")  # ← Теперь переменная определена!
-CATEGORY_NAME = "Характеристики"     # Название категории
+TOKEN = os.getenv("DISCORD_TOKEN")  # Убедитесь, что токен задан в .env
+CATEGORY_NAME = "Характеристики"  # Название категории, куда будут создаваться каналы
 
 # Настройка бота
 intents = discord.Intents.default()
@@ -18,7 +18,7 @@ intents.guilds = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 tree = bot.tree
 
-# --- Модалка для сбора данных ---
+# --- Модалка для сбора данных при создании канала ---
 class ChannelInfoModal(Modal, title="Данные для создания канала"):
     nickname = TextInput(label="Ник", placeholder="Пример: Jacob_Stealer")
     date = TextInput(label="Дата", placeholder="Пример: 06.06.2025")
@@ -43,12 +43,16 @@ class ChannelInfoModal(Modal, title="Данные для создания кан
             return
 
         channel = await guild.create_text_channel(name=channel_name, category=category)
-        message = f"{self.nickname.value} | {self.date.value} | {self.level.value} | {self.channel_type_value}"
+
+        nickname = self.nickname.value.strip()
+        date = self.date.value.strip()
+        level = self.level.value.strip()
+        message = f"[{nickname}](https://arizonarp.logsparser.info/?server_number=5&sort=desc&player={nickname}) | {date} | {level} | {self.channel_type_value}"
         await channel.send(message)
 
         await interaction.response.send_message(f"✅ Канал {channel.mention} создан!", ephemeral=True)
 
-# --- Выбор типа заявки ---
+# --- Селект выбора типа заявки ---
 class ChannelTypeSelect(Select):
     def __init__(self):
         options = [
@@ -62,29 +66,17 @@ class ChannelTypeSelect(Select):
     async def callback(self, interaction: Interaction):
         await interaction.response.send_modal(ChannelInfoModal(channel_type=self.values[0]))
 
-# --- View с селектом ---
 class CreateChannelView(View):
     def __init__(self):
         super().__init__(timeout=None)
         self.add_item(ChannelTypeSelect())
 
-# --- Команда /create ---
 @tree.command(name="create", description="Создать канал по заявке")
 async def create(interaction: Interaction):
     view = CreateChannelView()
     await interaction.response.send_message("🔽 Выберите тип заявки:", view=view, ephemeral=True)
 
-# --- Запуск и синхронизация ---
-@bot.event
-async def on_ready():
-    try:
-        synced = await tree.sync()
-        print(f"✅ Synced {len(synced)} slash commands.")
-    except Exception as e:
-        print(f"❌ Ошибка sync: {e}")
-    print(f"🔗 Logged in as {bot.user}")
-
-# --- Новый выпадающий список ---
+# --- Логика /log команды с embed сообщением ---
 class LogTypeSelect(Select):
     def __init__(self):
         options = [
@@ -96,7 +88,6 @@ class LogTypeSelect(Select):
     async def callback(self, interaction: Interaction):
         await interaction.response.send_modal(LogDescriptionModal(log_type=self.values[0]))
 
-# --- Модалка только с описанием ---
 class LogDescriptionModal(Modal, title="Описание действия"):
     def __init__(self, log_type: str):
         super().__init__()
@@ -117,15 +108,23 @@ class LogDescriptionModal(Modal, title="Описание действия"):
         await interaction.channel.send(embed=embed)
         await interaction.response.send_message("✅ Лог добавлен!", ephemeral=True)
 
-# --- View с выбором типа ---
 class LogView(View):
     def __init__(self):
         super().__init__(timeout=None)
         self.add_item(LogTypeSelect())
 
-# --- Slash-команда /log ---
-@tree.command(name="log", description="Добавить лог (Заслуги или Косяк)")
+@tree.command(name="log", description="Добавить лог: Заслуга или Косяк")
 async def log(interaction: Interaction):
     await interaction.response.send_message("Выберите тип:", view=LogView(), ephemeral=True)
+
+# --- Запуск бота ---
+@bot.event
+async def on_ready():
+    try:
+        synced = await tree.sync()
+        print(f"✅ Synced {len(synced)} slash commands.")
+    except Exception as e:
+        print(f"❌ Ошибка sync: {e}")
+    print(f"🔗 Logged in as {bot.user}")
 
 bot.run(TOKEN)
