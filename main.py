@@ -6,16 +6,16 @@ from discord import app_commands
 from discord.ui import View, Select
 from dotenv import load_dotenv
 
-# =========================
+# =====================================================
 # Загрузка .env
-# =========================
+# =====================================================
 load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
-# =========================
+# =====================================================
 # Discord настройки
-# =========================
+# =====================================================
 intents = discord.Intents.default()
 
 bot = commands.Bot(
@@ -25,15 +25,15 @@ bot = commands.Bot(
 
 tree = bot.tree
 
-# =========================
+# =====================================================
 # Файлы
-# =========================
+# =====================================================
 DATA_FILE = "points.json"
 POINTS_MESSAGE_FILE = "points_message.json"
 
-# =========================
-# Точки
-# =========================
+# =====================================================
+# Точки влияния
+# =====================================================
 default_points = {
     "Баржа": "Свободно",
     "Старые Фибы (Noose)": "Свободно",
@@ -43,9 +43,9 @@ default_points = {
     "Лабиринт (Kortz)": "Свободно"
 }
 
-# =========================
+# =====================================================
 # Семьи
-# =========================
+# =====================================================
 FAMILIES = [
     "Reseller",
     "Giudice",
@@ -57,9 +57,9 @@ FAMILIES = [
     "Velmora"
 ]
 
-# =========================
-# Создание файла
-# =========================
+# =====================================================
+# Создание файла points.json
+# =====================================================
 if not os.path.exists(DATA_FILE):
 
     with open(DATA_FILE, "w", encoding="utf-8") as f:
@@ -71,18 +71,18 @@ if not os.path.exists(DATA_FILE):
             indent=4
         )
 
-# =========================
+# =====================================================
 # Загрузка точек
-# =========================
+# =====================================================
 def load_points():
 
     with open(DATA_FILE, "r", encoding="utf-8") as f:
 
         return json.load(f)
 
-# =========================
+# =====================================================
 # Сохранение точек
-# =========================
+# =====================================================
 def save_points(data):
 
     with open(DATA_FILE, "w", encoding="utf-8") as f:
@@ -94,9 +94,9 @@ def save_points(data):
             indent=4
         )
 
-# =========================
+# =====================================================
 # Сохранение сообщения
-# =========================
+# =====================================================
 def save_points_message(
     channel_id,
     message_id
@@ -115,9 +115,9 @@ def save_points_message(
 
         json.dump(data, f)
 
-# =========================
+# =====================================================
 # Загрузка сообщения
-# =========================
+# =====================================================
 def load_points_message():
 
     if not os.path.exists(
@@ -134,9 +134,9 @@ def load_points_message():
 
         return json.load(f)
 
-# =========================
+# =====================================================
 # Embed точек
-# =========================
+# =====================================================
 def create_points_embed():
 
     points_data = load_points()
@@ -156,9 +156,9 @@ def create_points_embed():
 
     return embed
 
-# =========================
+# =====================================================
 # Автообновление сообщения
-# =========================
+# =====================================================
 async def update_points_message():
 
     data = load_points_message()
@@ -190,9 +190,143 @@ async def update_points_message():
         pass
 
 # =====================================================
-# SELECT ТОЧЕК
+# SELECT СЕМЕЙ ДЛЯ /setfamily
+# =====================================================
+class FamilySelect(Select):
+
+    def __init__(self):
+
+        options = [
+
+            discord.SelectOption(
+                label=family
+            )
+
+            for family in FAMILIES
+        ]
+
+        super().__init__(
+            placeholder="Выберите семью",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+
+    async def callback(
+        self,
+        interaction: discord.Interaction
+    ):
+
+        selected_family = self.values[0]
+
+        await interaction.response.edit_message(
+            content=(
+                f"👑 Выбрана семья: "
+                f"**{selected_family}**\n\n"
+                f"📍 Теперь выберите точку:"
+            ),
+            embed=None,
+            view=PointView(selected_family)
+        )
+
+# =====================================================
+# SELECT ТОЧЕК ДЛЯ /setfamily
 # =====================================================
 class PointSelect(Select):
+
+    def __init__(self, family_name):
+
+        self.family_name = family_name
+
+        points_data = load_points()
+
+        options = []
+
+        for point, owner in points_data.items():
+
+            options.append(
+
+                discord.SelectOption(
+                    label=point,
+                    description=f"Текущий владелец: {owner}"
+                )
+            )
+
+        super().__init__(
+            placeholder="Выберите точку влияния",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+
+    async def callback(
+        self,
+        interaction: discord.Interaction
+    ):
+
+        selected_point = self.values[0]
+
+        points_data = load_points()
+
+        points_data[selected_point] = self.family_name
+
+        save_points(points_data)
+
+        await update_points_message()
+
+        embed = discord.Embed(
+            title="✅ Точка обновлена",
+            color=0x00ff99
+        )
+
+        embed.add_field(
+            name="📌 Точка",
+            value=selected_point,
+            inline=False
+        )
+
+        embed.add_field(
+            name="👑 Семья",
+            value=self.family_name,
+            inline=False
+        )
+
+        await interaction.response.edit_message(
+            content=None,
+            embed=embed,
+            view=None
+        )
+
+# =====================================================
+# VIEW СЕМЕЙ
+# =====================================================
+class FamilyView(View):
+
+    def __init__(self):
+
+        super().__init__(timeout=None)
+
+        self.add_item(
+            FamilySelect()
+        )
+
+# =====================================================
+# VIEW ТОЧЕК
+# =====================================================
+class PointView(View):
+
+    def __init__(self, family_name):
+
+        super().__init__(timeout=None)
+
+        self.add_item(
+            PointSelect(family_name)
+        )
+
+# =====================================================
+# SELECT ТОЧЕК ДЛЯ /setallpoints
+# =====================================================
+class AllPointsSelect(Select):
 
     def __init__(self):
 
@@ -226,13 +360,13 @@ class PointSelect(Select):
 
         await interaction.response.edit_message(
             embed=create_points_embed(),
-            view=FamilySelectView(selected_point)
+            view=AllFamiliesView(selected_point)
         )
 
 # =====================================================
-# SELECT СЕМЕЙ
+# SELECT СЕМЕЙ ДЛЯ /setallpoints
 # =====================================================
-class FamilySelect(Select):
+class AllFamiliesSelect(Select):
 
     def __init__(self, point_name):
 
@@ -271,37 +405,37 @@ class FamilySelect(Select):
 
         await interaction.response.edit_message(
             embed=create_points_embed(),
-            view=MainSetView()
+            view=AllPointsView()
         )
 
 # =====================================================
-# VIEW СЕМЕЙ
+# VIEW ТОЧЕК
 # =====================================================
-class FamilySelectView(View):
-
-    def __init__(self, point_name):
-
-        super().__init__(timeout=None)
-
-        self.add_item(
-            FamilySelect(point_name)
-        )
-
-# =====================================================
-# MAIN VIEW
-# =====================================================
-class MainSetView(View):
+class AllPointsView(View):
 
     def __init__(self):
 
         super().__init__(timeout=None)
 
         self.add_item(
-            PointSelect()
+            AllPointsSelect()
         )
 
 # =====================================================
-# SELECT УДАЛЕНИЯ
+# VIEW СЕМЕЙ
+# =====================================================
+class AllFamiliesView(View):
+
+    def __init__(self, point_name):
+
+        super().__init__(timeout=None)
+
+        self.add_item(
+            AllFamiliesSelect(point_name)
+        )
+
+# =====================================================
+# SELECT УДАЛЕНИЯ СЕМЬИ
 # =====================================================
 class RemoveFamilySelect(Select):
 
@@ -376,9 +510,14 @@ async def setfamily(
     interaction: discord.Interaction
 ):
 
+    embed = discord.Embed(
+        title="👑 Выберите семью",
+        color=0x2b2d31
+    )
+
     await interaction.response.send_message(
-        embed=create_points_embed(),
-        view=MainSetView(),
+        embed=embed,
+        view=FamilyView(),
         ephemeral=True
     )
 
@@ -395,7 +534,7 @@ async def setallpoints(
 
     await interaction.response.send_message(
         embed=create_points_embed(),
-        view=MainSetView(),
+        view=AllPointsView(),
         ephemeral=True
     )
 
@@ -516,6 +655,7 @@ async def families(
         embed=embed,
         ephemeral=True
     )
+
 # =====================================================
 # /clear
 # =====================================================
@@ -567,6 +707,7 @@ async def clear(
         embed=embed,
         ephemeral=True
     )
+
 # =====================================================
 # READY
 # =====================================================
