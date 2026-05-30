@@ -1,130 +1,175 @@
 import os
+import json
 import discord
-from discord.ext import commands
+from datetime import datetime
+from discord.ext import commands, tasks
 from discord import app_commands, Interaction
-from discord.ui import View, Select, Modal, TextInput
 from dotenv import load_dotenv
 
-# Загрузка .env файла
+# =========================
+# Загрузка .env
+# =========================
 load_dotenv()
-TOKEN = os.getenv("DISCORD_TOKEN")  # Убедитесь, что токен задан в .env
-CATEGORY_NAME = "Характеристики"  # Название категории, куда будут создаваться каналы
 
-# Настройка бота
+TOKEN = os.getenv("DISCORD_TOKEN")
+
+# ID канала для сообщений о сбросе точек
+POINTS_CHANNEL_ID = 1384641223779684504
+
+# =========================
+# Discord настройки
+# =========================
 intents = discord.Intents.default()
-intents.message_content = True
 intents.guilds = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 tree = bot.tree
 
-# --- Модалка для сбора данных при создании канала ---
-class ChannelInfoModal(Modal, title="Данные для создания канала"):
-    nickname = TextInput(label="Ник", placeholder="Пример: Jacob_Stealer")
-    date = TextInput(label="Дата", placeholder="Пример: 06.06.2025")
-    level = TextInput(label="LVL", placeholder="Пример: 2")
+# =========================
+# ФАЙЛ С ТОЧКАМИ
+# =========================
+DATA_FILE = "points.json"
 
-    def __init__(self, channel_type: str):
-        super().__init__()
-        self.channel_type_value = channel_type
+# =========================
+# Точки влияния
+# =========================
+default_points = {
+    "Баржа": "Свободно",
+    "Старые Фибы (Noose)": "Свободно",
+    "Притон": "Свободно",
+    "ЛНС (каменоломня)": "Свободно",
+    "Лес (лесопилка)": "Свободно",
+    "Лабиринт (Kortz)": "Свободно"
+}
 
-    async def on_submit(self, interaction: Interaction):
-        guild = interaction.guild
-        category = discord.utils.get(guild.categories, name=CATEGORY_NAME)
+# Создание файла points.json
+if not os.path.exists(DATA_FILE):
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(default_points, f, ensure_ascii=False, indent=4)
 
-        if category is None:
-            await interaction.response.send_message("❌ Категория 'Характеристики' не найдена.", ephemeral=True)
-            return
+# =========================
+# Загрузка точек
+# =========================
+def load_points():
+    with open(DATA_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
 
-        channel_name = self.nickname.value.strip().replace(" ", "_")
-        existing_channel = discord.utils.get(guild.text_channels, name=channel_name)
-        if existing_channel:
-            await interaction.response.send_message("⚠️ Канал с таким ником уже существует.", ephemeral=True)
-            return
+# =========================
+# Сохранение точек
+# =========================
+def save_points(data):
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
 
-        channel = await guild.create_text_channel(name=channel_name, category=category)
+# =========================
+# Команда /setfamily
+# =========================
+@tree.command(
+    name="setfamily",
+    description="Назначить семью на точку"
+)
+@app_commands.describe(
+    point="Название точки",
+    family="Название семьи"
+)
+async def setfamily(
+    interaction: Interaction,
+    point: str,
+    family: str
+):
+    points = load_points()
 
-        nickname = self.nickname.value.strip()
-        date = self.date.value.strip()
-        level = self.level.value.strip()
-        message = f"[{nickname}](https://arizonarp.logsparser.info/?server_number=5&sort=desc&player={nickname}) | {date} | {level} | {self.channel_type_value}"
-        await channel.send(message)
+    if point not in points:
+        await interaction.response.send_message(
+            "❌ Такой точки нет.",
+            ephemeral=True
+        )
+        return
 
-        await interaction.response.send_message(f"✅ Канал {channel.mention} создан!", ephemeral=True)
+    points[point] = family
 
-# --- Селект выбора типа заявки ---
-class ChannelTypeSelect(Select):
-    def __init__(self):
-        options = [
-            discord.SelectOption(label="Собеседование"),
-            discord.SelectOption(label="Восстановление"),
-            discord.SelectOption(label="Лидерский пост (Гос)"),
-            discord.SelectOption(label="Лидерский пост (Нелегалы)")
-        ]
-        super().__init__(placeholder="Выберите тип заявки", options=options, min_values=1, max_values=1)
+    save_points(points)
 
-    async def callback(self, interaction: Interaction):
-        await interaction.response.send_modal(ChannelInfoModal(channel_type=self.values[0]))
+    await interaction.response.send_message(
+        f"✅ Семья **{family}** удерживает **{point}**"
+    )
 
-class CreateChannelView(View):
-    def __init__(self):
-        super().__init__(timeout=None)
-        self.add_item(ChannelTypeSelect())
+# =========================
+# Команда /points
+# =========================
+@tree.command(
+    name="points",
+    description="Список точек влияния"
+)
+async def points(interaction: Interaction):
+    points_data = load_points()
 
-@tree.command(name="create", description="Создать канал по заявке")
-async def create(interaction: Interaction):
-    view = CreateChannelView()
-    await interaction.response.send_message("🔽 Выберите тип заявки:", view=view, ephemeral=True)
+    embed = discord.Embed(
+        title="📍 Удержание точек влияния",
+        color=0x00ff99
+    )
 
-# --- Логика /log команды с embed сообщением ---
-class LogTypeSelect(Select):
-    def __init__(self):
-        options = [
-            discord.SelectOption(label="Заслуги", emoji="✅"),
-            discord.SelectOption(label="Косяк", emoji="⚠️")
-        ]
-        super().__init__(placeholder="Выберите тип", min_values=1, max_values=1, options=options)
-
-    async def callback(self, interaction: Interaction):
-        await interaction.response.send_modal(LogDescriptionModal(log_type=self.values[0]))
-
-class LogDescriptionModal(Modal, title="Описание действия"):
-    def __init__(self, log_type: str):
-        super().__init__()
-        self.log_type = log_type
-        self.desc_input = TextInput(label="Что сделал игрок", style=discord.TextStyle.paragraph)
-        self.add_item(self.desc_input)
-
-    async def on_submit(self, interaction: Interaction):
-        description = self.desc_input.value.strip()
-        color = discord.Color.green() if self.log_type == "Заслуги" else discord.Color.red()
-
-        embed = discord.Embed(
-            title=f"**{self.log_type.upper()}**",
-            description=description,
-            color=color
+    for point, family in points_data.items():
+        embed.add_field(
+            name=point,
+            value=f"👑 {family}",
+            inline=False
         )
 
-        await interaction.channel.send(embed=embed)
-        await interaction.response.send_message("✅ Лог добавлен!", ephemeral=True)
+    await interaction.response.send_message(
+        embed=embed
+    )
 
-class LogView(View):
-    def __init__(self):
-        super().__init__(timeout=None)
-        self.add_item(LogTypeSelect())
+# =========================
+# Автосброс точек
+# =========================
+@tasks.loop(minutes=1)
+async def reset_points():
+    now = datetime.now()
 
-@tree.command(name="log", description="Добавить лог: Заслуга или Косяк")
-async def log(interaction: Interaction):
-    await interaction.response.send_message("Выберите тип:", view=LogView(), ephemeral=True)
+    # 3 = четверг
+    # 6 = воскресенье
+    if (
+        now.weekday() in [3, 6]
+        and now.hour == 0
+        and now.minute == 0
+    ):
+        save_points(default_points)
 
-# --- Запуск бота ---
+        channel = bot.get_channel(
+            POINTS_CHANNEL_ID
+        )
+
+        if channel:
+            embed = discord.Embed(
+                title="🔄 Обновление точек влияния",
+                description="Все точки были сброшены.",
+                color=0xff0000
+            )
+
+            await channel.send(embed=embed)
+
+# =========================
+# READY
+# =========================
 @bot.event
 async def on_ready():
     try:
         synced = await tree.sync()
-        print(f"✅ Synced {len(synced)} slash commands.")
+
+        print(
+            f"✅ Synced {len(synced)} slash commands."
+        )
+
     except Exception as e:
         print(f"❌ Ошибка sync: {e}")
+
     print(f"🔗 Logged in as {bot.user}")
 
+    if not reset_points.is_running():
+        reset_points.start()
+
+# =========================
+# START BOT
+# =========================
 bot.run(TOKEN)
