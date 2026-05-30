@@ -115,15 +115,12 @@ class PointModal(Modal, title="Точки влияния"):
 # КОМАНДА
 # =========================
 @tree.command(
-    name="capture",
-    description="Захватить точку"
+    name="setfamily",
+    description="Назначить семью на точку"
 )
-async def capture(
+async def setfamily(
     interaction: discord.Interaction
 ):
-    await interaction.response.send_modal(
-        PointModal()
-    )
 
 # =========================
 # КОМАНДА СПИСКА
