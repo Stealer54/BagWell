@@ -79,7 +79,7 @@ def save_points(data):
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 # =========================
-# SELECT СЕМЕЙ
+# SELECT СЕМЬИ
 # =========================
 class FamilySelect(Select):
 
@@ -278,6 +278,83 @@ async def setfamily(
     )
 
 # =========================
+# /setallpoints
+# =========================
+@tree.command(
+    name="setallpoints",
+    description="Быстро назначить все точки"
+)
+@app_commands.describe(
+    barge="Баржа",
+    fib="Старые Фибы (Noose)",
+    hideout="Притон",
+    lns="ЛНС (каменоломня)",
+    forest="Лес (лесопилка)",
+    labyrinth="Лабиринт (Kortz)"
+)
+async def setallpoints(
+    interaction: discord.Interaction,
+    barge: str,
+    fib: str,
+    hideout: str,
+    lns: str,
+    forest: str,
+    labyrinth: str
+):
+
+    invalid_families = []
+
+    for family in [
+        barge,
+        fib,
+        hideout,
+        lns,
+        forest,
+        labyrinth
+    ]:
+
+        if family not in FAMILIES:
+            invalid_families.append(family)
+
+    if invalid_families:
+
+        await interaction.response.send_message(
+            f"❌ Неизвестные семьи:\n" +
+            "\n".join(invalid_families),
+            ephemeral=True
+        )
+
+        return
+
+    points_data = {
+        "Баржа": barge,
+        "Старые Фибы (Noose)": fib,
+        "Притон": hideout,
+        "ЛНС (каменоломня)": lns,
+        "Лес (лесопилка)": forest,
+        "Лабиринт (Kortz)": labyrinth
+    }
+
+    save_points(points_data)
+
+    embed = discord.Embed(
+        title="📍 Все точки обновлены",
+        color=0x00ff99
+    )
+
+    for point, family in points_data.items():
+
+        embed.add_field(
+            name=point,
+            value=f"👑 {family}",
+            inline=False
+        )
+
+    await interaction.response.send_message(
+        embed=embed
+    )
+
+# =========================
 # /points
 # =========================
 @tree.command(
@@ -396,7 +473,6 @@ async def reset_points():
 
     now = datetime.now()
 
-    # четверг и воскресенье
     if (
         now.weekday() in [3, 6]
         and now.hour == 0
