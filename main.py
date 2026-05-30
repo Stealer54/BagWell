@@ -641,21 +641,22 @@ async def families(
     interaction: discord.Interaction
 ):
 
-    fam_list = "\n".join(
-        [f"• {fam}" for fam in FAMILIES]
-    )
-
     embed = discord.Embed(
         title="👑 Список семей",
-        description=fam_list,
-        color=0xff9900
+        color=0x2b2d31
     )
+
+    for family in FAMILIES:
+
+        embed.add_field(
+            name="Семья",
+            value=f"👑 {family}",
+            inline=False
+        )
 
     await interaction.response.send_message(
-        embed=embed,
-        ephemeral=True
+        embed=embed
     )
-
 # =====================================================
 # /clear
 # =====================================================
