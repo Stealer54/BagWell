@@ -205,6 +205,62 @@ class PointView(View):
         )
 
 # =========================
+# SELECT УДАЛЕНИЯ СЕМЬИ
+# =========================
+class RemoveFamilySelect(Select):
+
+    def __init__(self):
+
+        options = [
+            discord.SelectOption(
+                label=family
+            )
+            for family in FAMILIES
+        ]
+
+        super().__init__(
+            placeholder="Выберите семью для удаления",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+
+    async def callback(
+        self,
+        interaction: discord.Interaction
+    ):
+
+        selected_family = self.values[0]
+
+        if selected_family not in FAMILIES:
+
+            await interaction.response.send_message(
+                "❌ Семья не найдена.",
+                ephemeral=True
+            )
+
+            return
+
+        FAMILIES.remove(selected_family)
+
+        await interaction.response.send_message(
+            f"✅ Семья **{selected_family}** удалена."
+        )
+
+# =========================
+# VIEW УДАЛЕНИЯ
+# =========================
+class RemoveFamilyView(View):
+
+    def __init__(self):
+
+        super().__init__(timeout=None)
+
+        self.add_item(
+            RemoveFamilySelect()
+        )
+
+# =========================
 # /setfamily
 # =========================
 @tree.command(
@@ -288,27 +344,23 @@ async def addfamily(
     name="removefamily",
     description="Удалить семью"
 )
-@app_commands.describe(
-    family="Название семьи"
-)
 async def removefamily(
-    interaction: discord.Interaction,
-    family: str
+    interaction: discord.Interaction
 ):
 
-    if family not in FAMILIES:
+    if len(FAMILIES) == 0:
 
         await interaction.response.send_message(
-            "❌ Семья не найдена.",
+            "❌ Список семей пуст.",
             ephemeral=True
         )
 
         return
 
-    FAMILIES.remove(family)
-
     await interaction.response.send_message(
-        f"✅ Семья **{family}** удалена."
+        "🗑️ Выберите семью для удаления:",
+        view=RemoveFamilyView(),
+        ephemeral=True
     )
 
 # =========================
