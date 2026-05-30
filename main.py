@@ -1,8 +1,7 @@
 import os
 import json
 import discord
-from datetime import datetime
-from discord.ext import commands, tasks
+from discord.ext import commands
 from discord import app_commands
 from discord.ui import View, Select
 from dotenv import load_dotenv
@@ -13,9 +12,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
-
-# ID канала для сообщений о сбросе
-POINTS_CHANNEL_ID = 123456789012345678
 
 # =========================
 # Discord настройки
@@ -61,34 +57,52 @@ FAMILIES = [
 # Создание файла
 # =========================
 if not os.path.exists(DATA_FILE):
+
     with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(default_points, f, ensure_ascii=False, indent=4)
+
+        json.dump(
+            default_points,
+            f,
+            ensure_ascii=False,
+            indent=4
+        )
 
 # =========================
 # Загрузка данных
 # =========================
 def load_points():
+
     with open(DATA_FILE, "r", encoding="utf-8") as f:
+
         return json.load(f)
 
 # =========================
 # Сохранение данных
 # =========================
 def save_points(data):
+
     with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+
+        json.dump(
+            data,
+            f,
+            ensure_ascii=False,
+            indent=4
+        )
 
 # =========================
-# SELECT СЕМЬИ
+# SELECT СЕМЕЙ
 # =========================
 class FamilySelect(Select):
 
     def __init__(self):
 
         options = [
+
             discord.SelectOption(
                 label=family
             )
+
             for family in FAMILIES
         ]
 
@@ -131,6 +145,7 @@ class PointSelect(Select):
         for point, owner in points_data.items():
 
             options.append(
+
                 discord.SelectOption(
                     label=point,
                     description=f"Текущий владелец: {owner}"
@@ -212,9 +227,11 @@ class RemoveFamilySelect(Select):
     def __init__(self):
 
         options = [
+
             discord.SelectOption(
                 label=family
             )
+
             for family in FAMILIES
         ]
 
@@ -314,7 +331,10 @@ async def setallpoints(
     ]:
 
         if family not in FAMILIES:
-            invalid_families.append(family)
+
+            invalid_families.append(
+                family
+            )
 
     if invalid_families:
 
@@ -327,6 +347,7 @@ async def setallpoints(
         return
 
     points_data = {
+
         "Баржа": barge,
         "Старые Фибы (Noose)": fib,
         "Притон": hideout,
@@ -466,42 +487,13 @@ async def families(
     )
 
 # =========================
-# АВТОСБРОС
-# =========================
-@tasks.loop(minutes=1)
-async def reset_points():
-
-    now = datetime.now()
-
-    if (
-        now.weekday() in [3, 6]
-        and now.hour == 0
-        and now.minute == 0
-    ):
-
-        save_points(default_points)
-
-        channel = bot.get_channel(
-            POINTS_CHANNEL_ID
-        )
-
-        if channel:
-
-            embed = discord.Embed(
-                title="🔄 Сброс точек влияния",
-                description="Все точки были очищены.",
-                color=0xff0000
-            )
-
-            await channel.send(embed=embed)
-
-# =========================
 # READY
 # =========================
 @bot.event
 async def on_ready():
 
     try:
+
         synced = await tree.sync()
 
         print(
@@ -509,12 +501,14 @@ async def on_ready():
         )
 
     except Exception as e:
-        print(f"❌ Ошибка sync: {e}")
 
-    print(f"✅ Бот запущен как {bot.user}")
+        print(
+            f"❌ Ошибка sync: {e}"
+        )
 
-    if not reset_points.is_running():
-        reset_points.start()
+    print(
+        f"✅ Бот запущен как {bot.user}"
+    )
 
 # =========================
 # START
