@@ -91,6 +91,28 @@ def save_points(data):
         )
 
 # =========================
+# EMBED ТОЧЕК
+# =========================
+def create_points_embed():
+
+    points_data = load_points()
+
+    embed = discord.Embed(
+        title="📍 Удержание точек влияния",
+        color=0x00ff99
+    )
+
+    for point, family in points_data.items():
+
+        embed.add_field(
+            name=point,
+            value=f"👑 {family}",
+            inline=False
+        )
+
+    return embed
+
+# =========================
 # SELECT СЕМЕЙ
 # =========================
 class FamilySelect(Select):
@@ -173,14 +195,8 @@ class PointSelect(Select):
         save_points(points_data)
 
         embed = discord.Embed(
-            title="📍 Обновление точки влияния",
+            title="✅ Точка обновлена",
             color=0x00ff99
-        )
-
-        embed.add_field(
-            name="👑 Семья",
-            value=self.family_name,
-            inline=False
         )
 
         embed.add_field(
@@ -189,8 +205,16 @@ class PointSelect(Select):
             inline=False
         )
 
-        await interaction.response.send_message(
-            embed=embed
+        embed.add_field(
+            name="👑 Семья",
+            value=self.family_name,
+            inline=False
+        )
+
+        await interaction.response.edit_message(
+            content=None,
+            embed=embed,
+            view=None
         )
 
 # =========================
@@ -260,8 +284,16 @@ class RemoveFamilySelect(Select):
 
         FAMILIES.remove(selected_family)
 
-        await interaction.response.send_message(
-            f"✅ Семья **{selected_family}** удалена."
+        embed = discord.Embed(
+            title="✅ Семья удалена",
+            description=f"👑 {selected_family}",
+            color=0xff0000
+        )
+
+        await interaction.response.edit_message(
+            content=None,
+            embed=embed,
+            view=None
         )
 
 # =========================
@@ -296,7 +328,7 @@ class SetAllPointsSelect(Select):
         ]
 
         super().__init__(
-            placeholder=f"Выберите семью для: {point_name}",
+            placeholder=f"{point_name}",
             min_values=1,
             max_values=1,
             options=options
@@ -315,27 +347,17 @@ class SetAllPointsSelect(Select):
 
         save_points(points_data)
 
-        embed = discord.Embed(
-            title="📍 Точка обновлена",
-            color=0x00ff99
-        )
+        await interaction.response.defer()
 
-        embed.add_field(
-            name="📌 Точка",
-            value=self.point_name,
-            inline=False
-        )
+        try:
 
-        embed.add_field(
-            name="👑 Семья",
-            value=selected_family,
-            inline=False
-        )
+            await interaction.message.edit(
+                embed=create_points_embed(),
+                view=SetAllPointsView()
+            )
 
-        await interaction.response.send_message(
-            embed=embed,
-            ephemeral=True
-        )
+        except:
+            pass
 
 # =========================
 # VIEW /setallpoints
@@ -363,8 +385,13 @@ async def setfamily(
     interaction: discord.Interaction
 ):
 
+    embed = discord.Embed(
+        title="👑 Выберите семью",
+        color=0x2b2d31
+    )
+
     await interaction.response.send_message(
-        "👑 Выберите семью:",
+        embed=embed,
         view=FamilyView(),
         ephemeral=True
     )
@@ -381,7 +408,7 @@ async def setallpoints(
 ):
 
     await interaction.response.send_message(
-        "📍 Выберите семьи для всех точек:",
+        embed=create_points_embed(),
         view=SetAllPointsView(),
         ephemeral=True
     )
@@ -397,20 +424,7 @@ async def points(
     interaction: discord.Interaction
 ):
 
-    points_data = load_points()
-
-    embed = discord.Embed(
-        title="📍 Удержание точек влияния",
-        color=0x00ff99
-    )
-
-    for point, family in points_data.items():
-
-        embed.add_field(
-            name=point,
-            value=f"👑 {family}",
-            inline=False
-        )
+    embed = create_points_embed()
 
     await interaction.response.send_message(
         embed=embed
@@ -442,8 +456,15 @@ async def addfamily(
 
     FAMILIES.append(family)
 
+    embed = discord.Embed(
+        title="✅ Семья добавлена",
+        description=f"👑 {family}",
+        color=0x00ff99
+    )
+
     await interaction.response.send_message(
-        f"✅ Семья **{family}** добавлена."
+        embed=embed,
+        ephemeral=True
     )
 
 # =========================
@@ -466,8 +487,13 @@ async def removefamily(
 
         return
 
+    embed = discord.Embed(
+        title="🗑️ Выберите семью",
+        color=0x2b2d31
+    )
+
     await interaction.response.send_message(
-        "🗑️ Выберите семью для удаления:",
+        embed=embed,
         view=RemoveFamilyView(),
         ephemeral=True
     )
@@ -494,7 +520,8 @@ async def families(
     )
 
     await interaction.response.send_message(
-        embed=embed
+        embed=embed,
+        ephemeral=True
     )
 
 # =========================
