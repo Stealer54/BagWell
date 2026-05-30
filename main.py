@@ -14,7 +14,7 @@ load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
-# ID канала для логов
+# ID канала для логов сброса
 POINTS_CHANNEL_ID = 123456789012345678
 
 # =========================
@@ -43,6 +43,23 @@ default_points = {
     "Лабиринт (Kortz)": "Свободно"
 }
 
+# =========================
+# Список семей
+# =========================
+FAMILIES = [
+    "Reseller",
+    "Giudice",
+    "Demorgan",
+    "Miamori",
+    "Fruktik",
+    "Obsidian",
+    "Худричи",
+    "Velmora"
+]
+
+# =========================
+# Создание файла
+# =========================
 if not os.path.exists(DATA_FILE):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(default_points, f, ensure_ascii=False, indent=4)
@@ -62,7 +79,7 @@ def save_points(data):
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 # =========================
-# МОДАЛКА /setfamily
+# МОДАЛКА
 # =========================
 class SetFamilyModal(
     Modal,
@@ -70,14 +87,14 @@ class SetFamilyModal(
 ):
 
     point = TextInput(
-        label="Название точки",
-        placeholder="Пример: Баржа",
+        label="Точка влияния",
+        placeholder="Баржа / Притон / Лес...",
         required=True
     )
 
     family = TextInput(
-        label="Название семьи",
-        placeholder="Пример: Bloods",
+        label="Семья",
+        placeholder="Reseller / Giudice ...",
         required=True
     )
 
@@ -85,19 +102,38 @@ class SetFamilyModal(
         self,
         interaction: discord.Interaction
     ):
+
         points = load_points()
 
         point_name = self.point.value.strip()
         family_name = self.family.value.strip()
 
+        # Проверка точки
         if point_name not in points:
 
-            available = "\n".join(points.keys())
+            points_list = "\n".join(
+                default_points.keys()
+            )
 
             await interaction.response.send_message(
-                f"❌ Такой точки нет.\n\nДоступные точки:\n{available}",
+                f"❌ Такой точки нет.\n\n"
+                f"Доступные точки:\n{points_list}",
                 ephemeral=True
             )
+
+            return
+
+        # Проверка семьи
+        if family_name not in FAMILIES:
+
+            fam_list = "\n".join(FAMILIES)
+
+            await interaction.response.send_message(
+                f"❌ Такой семьи нет.\n\n"
+                f"Доступные семьи:\n{fam_list}",
+                ephemeral=True
+            )
+
             return
 
         points[point_name] = family_name
@@ -110,13 +146,13 @@ class SetFamilyModal(
         )
 
         embed.add_field(
-            name="Точка",
+            name="📌 Точка",
             value=point_name,
             inline=False
         )
 
         embed.add_field(
-            name="Семья",
+            name="👑 Семья",
             value=family_name,
             inline=False
         )
@@ -126,7 +162,7 @@ class SetFamilyModal(
         )
 
 # =========================
-# КОМАНДА /setfamily
+# /setfamily
 # =========================
 @tree.command(
     name="setfamily",
@@ -140,7 +176,7 @@ async def setfamily(
     )
 
 # =========================
-# КОМАНДА /points
+# /points
 # =========================
 @tree.command(
     name="points",
@@ -149,6 +185,7 @@ async def setfamily(
 async def points(
     interaction: discord.Interaction
 ):
+
     points_data = load_points()
 
     embed = discord.Embed(
@@ -169,6 +206,91 @@ async def points(
     )
 
 # =========================
+# /addfamily
+# =========================
+@tree.command(
+    name="addfamily",
+    description="Добавить семью"
+)
+@app_commands.describe(
+    family="Название семьи"
+)
+async def addfamily(
+    interaction: discord.Interaction,
+    family: str
+):
+
+    if family in FAMILIES:
+
+        await interaction.response.send_message(
+            "❌ Семья уже существует.",
+            ephemeral=True
+        )
+
+        return
+
+    FAMILIES.append(family)
+
+    await interaction.response.send_message(
+        f"✅ Семья **{family}** добавлена."
+    )
+
+# =========================
+# /removefamily
+# =========================
+@tree.command(
+    name="removefamily",
+    description="Удалить семью"
+)
+@app_commands.describe(
+    family="Название семьи"
+)
+async def removefamily(
+    interaction: discord.Interaction,
+    family: str
+):
+
+    if family not in FAMILIES:
+
+        await interaction.response.send_message(
+            "❌ Семья не найдена.",
+            ephemeral=True
+        )
+
+        return
+
+    FAMILIES.remove(family)
+
+    await interaction.response.send_message(
+        f"✅ Семья **{family}** удалена."
+    )
+
+# =========================
+# /families
+# =========================
+@tree.command(
+    name="families",
+    description="Список семей"
+)
+async def families(
+    interaction: discord.Interaction
+):
+
+    fam_list = "\n".join(
+        [f"• {fam}" for fam in FAMILIES]
+    )
+
+    embed = discord.Embed(
+        title="👑 Список семей",
+        description=fam_list,
+        color=0xff9900
+    )
+
+    await interaction.response.send_message(
+        embed=embed
+    )
+
+# =========================
 # АВТОСБРОС
 # =========================
 @tasks.loop(minutes=1)
@@ -176,7 +298,8 @@ async def reset_points():
 
     now = datetime.now()
 
-    # четверг и воскресенье
+    # 3 = четверг
+    # 6 = воскресенье
     if (
         now.weekday() in [3, 6]
         and now.hour == 0
