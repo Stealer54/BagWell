@@ -99,7 +99,7 @@ def create_points_embed():
 
     embed = discord.Embed(
         title="📍 Удержание точек влияния",
-        color=0x00ff99
+        color=0x2b2d31
     )
 
     for point, family in points_data.items():
@@ -112,53 +112,12 @@ def create_points_embed():
 
     return embed
 
-# =========================
-# SELECT СЕМЕЙ
-# =========================
-class FamilySelect(Select):
-
-    def __init__(self):
-
-        options = [
-
-            discord.SelectOption(
-                label=family
-            )
-
-            for family in FAMILIES
-        ]
-
-        super().__init__(
-            placeholder="Выберите семью",
-            min_values=1,
-            max_values=1,
-            options=options
-        )
-
-    async def callback(
-        self,
-        interaction: discord.Interaction
-    ):
-
-        selected_family = self.values[0]
-
-        await interaction.response.edit_message(
-            content=(
-                f"👑 Выбрана семья: "
-                f"**{selected_family}**\n\n"
-                f"📍 Теперь выберите точку:"
-            ),
-            view=PointView(selected_family)
-        )
-
-# =========================
-# SELECT ТОЧЕК
-# =========================
+# =====================================================
+# SELECT ВЫБОРА ТОЧКИ ДЛЯ /setfamily
+# =====================================================
 class PointSelect(Select):
 
-    def __init__(self, family_name):
-
-        self.family_name = family_name
+    def __init__(self):
 
         points_data = load_points()
 
@@ -175,7 +134,7 @@ class PointSelect(Select):
             )
 
         super().__init__(
-            placeholder="Выберите точку влияния",
+            placeholder="Выберите точку",
             min_values=1,
             max_values=1,
             options=options
@@ -188,64 +147,83 @@ class PointSelect(Select):
 
         selected_point = self.values[0]
 
+        await interaction.response.edit_message(
+            embed=create_points_embed(),
+            view=FamilySelectView(selected_point)
+        )
+
+# =====================================================
+# SELECT ВЫБОРА СЕМЬИ
+# =====================================================
+class FamilySelect(Select):
+
+    def __init__(self, point_name):
+
+        self.point_name = point_name
+
+        options = [
+
+            discord.SelectOption(
+                label=family
+            )
+
+            for family in FAMILIES
+        ]
+
+        super().__init__(
+            placeholder=f"Семья для: {point_name}",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+
+    async def callback(
+        self,
+        interaction: discord.Interaction
+    ):
+
+        selected_family = self.values[0]
+
         points_data = load_points()
 
-        points_data[selected_point] = self.family_name
+        points_data[self.point_name] = selected_family
 
         save_points(points_data)
 
-        embed = discord.Embed(
-            title="✅ Точка обновлена",
-            color=0x00ff99
-        )
-
-        embed.add_field(
-            name="📌 Точка",
-            value=selected_point,
-            inline=False
-        )
-
-        embed.add_field(
-            name="👑 Семья",
-            value=self.family_name,
-            inline=False
-        )
-
         await interaction.response.edit_message(
-            content=None,
-            embed=embed,
-            view=None
+            embed=create_points_embed(),
+            view=MainSetView()
         )
 
-# =========================
-# VIEW СЕМЕЙ
-# =========================
-class FamilyView(View):
+# =====================================================
+# VIEW СЕМЬИ
+# =====================================================
+class FamilySelectView(View):
+
+    def __init__(self, point_name):
+
+        super().__init__(timeout=None)
+
+        self.add_item(
+            FamilySelect(point_name)
+        )
+
+# =====================================================
+# MAIN VIEW
+# =====================================================
+class MainSetView(View):
 
     def __init__(self):
 
         super().__init__(timeout=None)
 
         self.add_item(
-            FamilySelect()
+            PointSelect()
         )
 
-# =========================
-# VIEW ТОЧЕК
-# =========================
-class PointView(View):
-
-    def __init__(self, family_name):
-
-        super().__init__(timeout=None)
-
-        self.add_item(
-            PointSelect(family_name)
-        )
-
-# =========================
+# =====================================================
 # SELECT УДАЛЕНИЯ СЕМЬИ
-# =========================
+# =====================================================
 class RemoveFamilySelect(Select):
 
     def __init__(self):
@@ -291,14 +269,13 @@ class RemoveFamilySelect(Select):
         )
 
         await interaction.response.edit_message(
-            content=None,
             embed=embed,
             view=None
         )
 
-# =========================
+# =====================================================
 # VIEW УДАЛЕНИЯ
-# =========================
+# =====================================================
 class RemoveFamilyView(View):
 
     def __init__(self):
@@ -309,74 +286,9 @@ class RemoveFamilyView(View):
             RemoveFamilySelect()
         )
 
-# =========================
-# SELECT ДЛЯ /setallpoints
-# =========================
-class SetAllPointsSelect(Select):
-
-    def __init__(self, point_name):
-
-        self.point_name = point_name
-
-        options = [
-
-            discord.SelectOption(
-                label=family
-            )
-
-            for family in FAMILIES
-        ]
-
-        super().__init__(
-            placeholder=f"{point_name}",
-            min_values=1,
-            max_values=1,
-            options=options
-        )
-
-    async def callback(
-        self,
-        interaction: discord.Interaction
-    ):
-
-        points_data = load_points()
-
-        selected_family = self.values[0]
-
-        points_data[self.point_name] = selected_family
-
-        save_points(points_data)
-
-        await interaction.response.defer()
-
-        try:
-
-            await interaction.message.edit(
-                embed=create_points_embed(),
-                view=SetAllPointsView()
-            )
-
-        except:
-            pass
-
-# =========================
-# VIEW /setallpoints
-# =========================
-class SetAllPointsView(View):
-
-    def __init__(self):
-
-        super().__init__(timeout=None)
-
-        for point in default_points.keys():
-
-            self.add_item(
-                SetAllPointsSelect(point)
-            )
-
-# =========================
+# =====================================================
 # /setfamily
-# =========================
+# =====================================================
 @tree.command(
     name="setfamily",
     description="Назначить семью"
@@ -385,23 +297,18 @@ async def setfamily(
     interaction: discord.Interaction
 ):
 
-    embed = discord.Embed(
-        title="👑 Выберите семью",
-        color=0x2b2d31
-    )
-
     await interaction.response.send_message(
-        embed=embed,
-        view=FamilyView(),
+        embed=create_points_embed(),
+        view=MainSetView(),
         ephemeral=True
     )
 
-# =========================
+# =====================================================
 # /setallpoints
-# =========================
+# =====================================================
 @tree.command(
     name="setallpoints",
-    description="Быстро назначить все точки"
+    description="Настройка всех точек"
 )
 async def setallpoints(
     interaction: discord.Interaction
@@ -409,13 +316,13 @@ async def setallpoints(
 
     await interaction.response.send_message(
         embed=create_points_embed(),
-        view=SetAllPointsView(),
+        view=MainSetView(),
         ephemeral=True
     )
 
-# =========================
+# =====================================================
 # /points
-# =========================
+# =====================================================
 @tree.command(
     name="points",
     description="Список точек влияния"
@@ -430,9 +337,9 @@ async def points(
         embed=embed
     )
 
-# =========================
+# =====================================================
 # /addfamily
-# =========================
+# =====================================================
 @tree.command(
     name="addfamily",
     description="Добавить семью"
@@ -467,9 +374,9 @@ async def addfamily(
         ephemeral=True
     )
 
-# =========================
+# =====================================================
 # /removefamily
-# =========================
+# =====================================================
 @tree.command(
     name="removefamily",
     description="Удалить семью"
@@ -498,9 +405,9 @@ async def removefamily(
         ephemeral=True
     )
 
-# =========================
+# =====================================================
 # /families
-# =========================
+# =====================================================
 @tree.command(
     name="families",
     description="Список семей"
@@ -524,9 +431,9 @@ async def families(
         ephemeral=True
     )
 
-# =========================
+# =====================================================
 # READY
-# =========================
+# =====================================================
 @bot.event
 async def on_ready():
 
@@ -548,7 +455,7 @@ async def on_ready():
         f"✅ Бот запущен как {bot.user}"
     )
 
-# =========================
+# =====================================================
 # START
-# =========================
+# =====================================================
 bot.run(TOKEN)
