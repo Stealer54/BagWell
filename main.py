@@ -62,13 +62,22 @@ def save_points(data):
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 # =========================
-# МОДАЛКА
+# МОДАЛКА /setfamily
 # =========================
-class PointModal(Modal, title="Точки влияния"):
+class SetFamilyModal(
+    Modal,
+    title="Назначение семьи"
+):
+
+    point = TextInput(
+        label="Название точки",
+        placeholder="Пример: Баржа",
+        required=True
+    )
 
     family = TextInput(
         label="Название семьи",
-        placeholder="Введите название семьи",
+        placeholder="Пример: Bloods",
         required=True
     )
 
@@ -78,33 +87,38 @@ class PointModal(Modal, title="Точки влияния"):
     ):
         points = load_points()
 
-        # Пример:
-        # автоматически занимает первую свободную точку
-        free_point = None
+        point_name = self.point.value.strip()
+        family_name = self.family.value.strip()
 
-        for point, owner in points.items():
-            if owner == "Свободно":
-                free_point = point
-                break
+        if point_name not in points:
 
-        if free_point is None:
+            available = "\n".join(points.keys())
+
             await interaction.response.send_message(
-                "❌ Свободных точек нет.",
+                f"❌ Такой точки нет.\n\nДоступные точки:\n{available}",
                 ephemeral=True
             )
             return
 
-        points[free_point] = self.family.value
+        points[point_name] = family_name
 
         save_points(points)
 
         embed = discord.Embed(
-            title="📍 Точки влияния",
-            description=(
-                f"👑 Семья: **{self.family.value}**\n"
-                f"📌 Захватила: **{free_point}**"
-            ),
-            color=0xff9900
+            title="📍 Обновление точки влияния",
+            color=0x00ff99
+        )
+
+        embed.add_field(
+            name="Точка",
+            value=point_name,
+            inline=False
+        )
+
+        embed.add_field(
+            name="Семья",
+            value=family_name,
+            inline=False
         )
 
         await interaction.response.send_message(
@@ -112,7 +126,7 @@ class PointModal(Modal, title="Точки влияния"):
         )
 
 # =========================
-# КОМАНДА
+# КОМАНДА /setfamily
 # =========================
 @tree.command(
     name="setfamily",
@@ -121,13 +135,16 @@ class PointModal(Modal, title="Точки влияния"):
 async def setfamily(
     interaction: discord.Interaction
 ):
+    await interaction.response.send_modal(
+        SetFamilyModal()
+    )
 
 # =========================
-# КОМАНДА СПИСКА
+# КОМАНДА /points
 # =========================
 @tree.command(
     name="points",
-    description="Список точек"
+    description="Список точек влияния"
 )
 async def points(
     interaction: discord.Interaction
@@ -140,6 +157,7 @@ async def points(
     )
 
     for point, family in points_data.items():
+
         embed.add_field(
             name=point,
             value=f"👑 {family}",
