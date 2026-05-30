@@ -26,10 +26,14 @@ bot = commands.Bot(
 tree = bot.tree
 
 # =========================
-# points.json
+# Файлы
 # =========================
 DATA_FILE = "points.json"
+POINTS_MESSAGE_FILE = "points_message.json"
 
+# =========================
+# Точки
+# =========================
 default_points = {
     "Баржа": "Свободно",
     "Старые Фибы (Noose)": "Свободно",
@@ -40,7 +44,7 @@ default_points = {
 }
 
 # =========================
-# Список семей
+# Семьи
 # =========================
 FAMILIES = [
     "Reseller",
@@ -68,7 +72,7 @@ if not os.path.exists(DATA_FILE):
         )
 
 # =========================
-# Загрузка данных
+# Загрузка точек
 # =========================
 def load_points():
 
@@ -77,7 +81,7 @@ def load_points():
         return json.load(f)
 
 # =========================
-# Сохранение данных
+# Сохранение точек
 # =========================
 def save_points(data):
 
@@ -91,7 +95,47 @@ def save_points(data):
         )
 
 # =========================
-# EMBED ТОЧЕК
+# Сохранение сообщения
+# =========================
+def save_points_message(
+    channel_id,
+    message_id
+):
+
+    data = {
+        "channel_id": channel_id,
+        "message_id": message_id
+    }
+
+    with open(
+        POINTS_MESSAGE_FILE,
+        "w",
+        encoding="utf-8"
+    ) as f:
+
+        json.dump(data, f)
+
+# =========================
+# Загрузка сообщения
+# =========================
+def load_points_message():
+
+    if not os.path.exists(
+        POINTS_MESSAGE_FILE
+    ):
+
+        return None
+
+    with open(
+        POINTS_MESSAGE_FILE,
+        "r",
+        encoding="utf-8"
+    ) as f:
+
+        return json.load(f)
+
+# =========================
+# Embed точек
 # =========================
 def create_points_embed():
 
@@ -112,8 +156,41 @@ def create_points_embed():
 
     return embed
 
+# =========================
+# Автообновление сообщения
+# =========================
+async def update_points_message():
+
+    data = load_points_message()
+
+    if not data:
+
+        return
+
+    try:
+
+        channel = bot.get_channel(
+            data["channel_id"]
+        )
+
+        if not channel:
+
+            return
+
+        message = await channel.fetch_message(
+            data["message_id"]
+        )
+
+        await message.edit(
+            embed=create_points_embed()
+        )
+
+    except:
+
+        pass
+
 # =====================================================
-# SELECT ВЫБОРА ТОЧКИ ДЛЯ /setfamily
+# SELECT ТОЧЕК
 # =====================================================
 class PointSelect(Select):
 
@@ -153,7 +230,7 @@ class PointSelect(Select):
         )
 
 # =====================================================
-# SELECT ВЫБОРА СЕМЬИ
+# SELECT СЕМЕЙ
 # =====================================================
 class FamilySelect(Select):
 
@@ -190,13 +267,15 @@ class FamilySelect(Select):
 
         save_points(points_data)
 
+        await update_points_message()
+
         await interaction.response.edit_message(
             embed=create_points_embed(),
             view=MainSetView()
         )
 
 # =====================================================
-# VIEW СЕМЬИ
+# VIEW СЕМЕЙ
 # =====================================================
 class FamilySelectView(View):
 
@@ -222,7 +301,7 @@ class MainSetView(View):
         )
 
 # =====================================================
-# SELECT УДАЛЕНИЯ СЕМЬИ
+# SELECT УДАЛЕНИЯ
 # =====================================================
 class RemoveFamilySelect(Select):
 
@@ -238,7 +317,7 @@ class RemoveFamilySelect(Select):
         ]
 
         super().__init__(
-            placeholder="Выберите семью для удаления",
+            placeholder="Выберите семью",
             min_values=1,
             max_values=1,
             options=options
@@ -335,6 +414,13 @@ async def points(
 
     await interaction.response.send_message(
         embed=embed
+    )
+
+    message = await interaction.original_response()
+
+    save_points_message(
+        interaction.channel.id,
+        message.id
     )
 
 # =====================================================
