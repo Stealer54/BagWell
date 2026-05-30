@@ -30,6 +30,7 @@ tree = bot.tree
 # =====================================================
 DATA_FILE = "points.json"
 POINTS_MESSAGE_FILE = "points_message.json"
+FAMILIES_MESSAGE_FILE = "families_message.json"
 
 # =====================================================
 # Точки влияния
@@ -95,7 +96,7 @@ def save_points(data):
         )
 
 # =====================================================
-# Сохранение сообщения
+# Сохранение сообщения points
 # =====================================================
 def save_points_message(
     channel_id,
@@ -116,7 +117,7 @@ def save_points_message(
         json.dump(data, f)
 
 # =====================================================
-# Загрузка сообщения
+# Загрузка сообщения points
 # =====================================================
 def load_points_message():
 
@@ -128,6 +129,46 @@ def load_points_message():
 
     with open(
         POINTS_MESSAGE_FILE,
+        "r",
+        encoding="utf-8"
+    ) as f:
+
+        return json.load(f)
+
+# =====================================================
+# Сохранение сообщения families
+# =====================================================
+def save_families_message(
+    channel_id,
+    message_id
+):
+
+    data = {
+        "channel_id": channel_id,
+        "message_id": message_id
+    }
+
+    with open(
+        FAMILIES_MESSAGE_FILE,
+        "w",
+        encoding="utf-8"
+    ) as f:
+
+        json.dump(data, f)
+
+# =====================================================
+# Загрузка сообщения families
+# =====================================================
+def load_families_message():
+
+    if not os.path.exists(
+        FAMILIES_MESSAGE_FILE
+    ):
+
+        return None
+
+    with open(
+        FAMILIES_MESSAGE_FILE,
         "r",
         encoding="utf-8"
     ) as f:
@@ -157,7 +198,27 @@ def create_points_embed():
     return embed
 
 # =====================================================
-# Автообновление сообщения
+# Embed семей
+# =====================================================
+def create_families_embed():
+
+    embed = discord.Embed(
+        title="👑 Список семей",
+        color=0x2b2d31
+    )
+
+    for family in FAMILIES:
+
+        embed.add_field(
+            name="Семья",
+            value=f"👑 {family}",
+            inline=False
+        )
+
+    return embed
+
+# =====================================================
+# Автообновление points
 # =====================================================
 async def update_points_message():
 
@@ -183,6 +244,39 @@ async def update_points_message():
 
         await message.edit(
             embed=create_points_embed()
+        )
+
+    except:
+
+        pass
+
+# =====================================================
+# Автообновление families
+# =====================================================
+async def update_families_message():
+
+    data = load_families_message()
+
+    if not data:
+
+        return
+
+    try:
+
+        channel = bot.get_channel(
+            data["channel_id"]
+        )
+
+        if not channel:
+
+            return
+
+        message = await channel.fetch_message(
+            data["message_id"]
+        )
+
+        await message.edit(
+            embed=create_families_embed()
         )
 
     except:
@@ -475,6 +569,8 @@ class RemoveFamilySelect(Select):
 
         FAMILIES.remove(selected_family)
 
+        await update_families_message()
+
         embed = discord.Embed(
             title="✅ Семья удалена",
             description=f"👑 {selected_family}",
@@ -563,6 +659,30 @@ async def points(
     )
 
 # =====================================================
+# /families
+# =====================================================
+@tree.command(
+    name="families",
+    description="Список семей"
+)
+async def families(
+    interaction: discord.Interaction
+):
+
+    embed = create_families_embed()
+
+    await interaction.response.send_message(
+        embed=embed
+    )
+
+    message = await interaction.original_response()
+
+    save_families_message(
+        interaction.channel.id,
+        message.id
+    )
+
+# =====================================================
 # /addfamily
 # =====================================================
 @tree.command(
@@ -587,6 +707,8 @@ async def addfamily(
         return
 
     FAMILIES.append(family)
+
+    await update_families_message()
 
     embed = discord.Embed(
         title="✅ Семья добавлена",
@@ -630,33 +752,6 @@ async def removefamily(
         ephemeral=True
     )
 
-# =====================================================
-# /families
-# =====================================================
-@tree.command(
-    name="families",
-    description="Список семей"
-)
-async def families(
-    interaction: discord.Interaction
-):
-
-    embed = discord.Embed(
-        title="👑 Список семей",
-        color=0x2b2d31
-    )
-
-    for family in FAMILIES:
-
-        embed.add_field(
-            name="Семья",
-            value=f"👑 {family}",
-            inline=False
-        )
-
-    await interaction.response.send_message(
-        embed=embed
-    )
 # =====================================================
 # /clear
 # =====================================================
