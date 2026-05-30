@@ -516,7 +516,57 @@ async def families(
         embed=embed,
         ephemeral=True
     )
+# =====================================================
+# /clear
+# =====================================================
+@tree.command(
+    name="clear",
+    description="Удалить сообщения"
+)
+@app_commands.describe(
+    amount="Количество сообщений"
+)
+async def clear(
+    interaction: discord.Interaction,
+    amount: int
+):
 
+    if not interaction.user.guild_permissions.manage_messages:
+
+        await interaction.response.send_message(
+            "❌ У вас нет прав.",
+            ephemeral=True
+        )
+
+        return
+
+    if amount < 1:
+
+        await interaction.response.send_message(
+            "❌ Укажите число больше 0.",
+            ephemeral=True
+        )
+
+        return
+
+    await interaction.response.defer(
+        ephemeral=True
+    )
+
+    deleted = await interaction.channel.purge(
+        limit=amount
+    )
+
+    embed = discord.Embed(
+        title="🗑️ Сообщения удалены",
+        description=f"Удалено сообщений: **{len(deleted)}**",
+        color=0xff0000
+    )
+
+    await interaction.followup.send(
+        embed=embed,
+        ephemeral=True
+    )
 # =====================================================
 # READY
 # =====================================================
