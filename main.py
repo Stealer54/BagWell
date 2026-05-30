@@ -278,6 +278,81 @@ class RemoveFamilyView(View):
         )
 
 # =========================
+# SELECT ДЛЯ /setallpoints
+# =========================
+class SetAllPointsSelect(Select):
+
+    def __init__(self, point_name):
+
+        self.point_name = point_name
+
+        options = [
+
+            discord.SelectOption(
+                label=family
+            )
+
+            for family in FAMILIES
+        ]
+
+        super().__init__(
+            placeholder=f"Выберите семью для: {point_name}",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+
+    async def callback(
+        self,
+        interaction: discord.Interaction
+    ):
+
+        points_data = load_points()
+
+        selected_family = self.values[0]
+
+        points_data[self.point_name] = selected_family
+
+        save_points(points_data)
+
+        embed = discord.Embed(
+            title="📍 Точка обновлена",
+            color=0x00ff99
+        )
+
+        embed.add_field(
+            name="📌 Точка",
+            value=self.point_name,
+            inline=False
+        )
+
+        embed.add_field(
+            name="👑 Семья",
+            value=selected_family,
+            inline=False
+        )
+
+        await interaction.response.send_message(
+            embed=embed,
+            ephemeral=True
+        )
+
+# =========================
+# VIEW /setallpoints
+# =========================
+class SetAllPointsView(View):
+
+    def __init__(self):
+
+        super().__init__(timeout=None)
+
+        for point in default_points.keys():
+
+            self.add_item(
+                SetAllPointsSelect(point)
+            )
+
+# =========================
 # /setfamily
 # =========================
 @tree.command(
@@ -301,78 +376,14 @@ async def setfamily(
     name="setallpoints",
     description="Быстро назначить все точки"
 )
-@app_commands.describe(
-    barge="Баржа",
-    fib="Старые Фибы (Noose)",
-    hideout="Притон",
-    lns="ЛНС (каменоломня)",
-    forest="Лес (лесопилка)",
-    labyrinth="Лабиринт (Kortz)"
-)
 async def setallpoints(
-    interaction: discord.Interaction,
-    barge: str,
-    fib: str,
-    hideout: str,
-    lns: str,
-    forest: str,
-    labyrinth: str
+    interaction: discord.Interaction
 ):
 
-    invalid_families = []
-
-    for family in [
-        barge,
-        fib,
-        hideout,
-        lns,
-        forest,
-        labyrinth
-    ]:
-
-        if family not in FAMILIES:
-
-            invalid_families.append(
-                family
-            )
-
-    if invalid_families:
-
-        await interaction.response.send_message(
-            f"❌ Неизвестные семьи:\n" +
-            "\n".join(invalid_families),
-            ephemeral=True
-        )
-
-        return
-
-    points_data = {
-
-        "Баржа": barge,
-        "Старые Фибы (Noose)": fib,
-        "Притон": hideout,
-        "ЛНС (каменоломня)": lns,
-        "Лес (лесопилка)": forest,
-        "Лабиринт (Kortz)": labyrinth
-    }
-
-    save_points(points_data)
-
-    embed = discord.Embed(
-        title="📍 Все точки обновлены",
-        color=0x00ff99
-    )
-
-    for point, family in points_data.items():
-
-        embed.add_field(
-            name=point,
-            value=f"👑 {family}",
-            inline=False
-        )
-
     await interaction.response.send_message(
-        embed=embed
+        "📍 Выберите семьи для всех точек:",
+        view=SetAllPointsView(),
+        ephemeral=True
     )
 
 # =========================
