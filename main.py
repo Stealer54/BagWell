@@ -1,3 +1,4 @@
+```python
 import os
 import json
 import discord
@@ -34,12 +35,16 @@ POINTS_FILE = "points.json"
 
 POINTS_MESSAGE_FILE = "points_message.json"
 
+FAMILIES_FILE = "families.json"
+
+FAMILIES_MESSAGE_FILE = "families_message.json"
+
 ISLAND_DATA_FILE = "island.json"
 
 ISLAND_MESSAGE_FILE = "island_message.json"
 
 # =====================================================
-# Точки
+# Дефолтные точки
 # =====================================================
 DEFAULT_POINTS = {
     "Баржа": "Свободно",
@@ -51,9 +56,9 @@ DEFAULT_POINTS = {
 }
 
 # =====================================================
-# Пул острова
+# Дефолтные семьи
 # =====================================================
-FAMILIES = [
+DEFAULT_FAMILIES = [
     "Obsidian",
     "Худричи",
     "Reseller",
@@ -81,13 +86,28 @@ if not os.path.exists(POINTS_FILE):
             indent=4
         )
 
+if not os.path.exists(FAMILIES_FILE):
+
+    with open(
+        FAMILIES_FILE,
+        "w",
+        encoding="utf-8"
+    ) as f:
+
+        json.dump(
+            DEFAULT_FAMILIES,
+            f,
+            ensure_ascii=False,
+            indent=4
+        )
+
 if not os.path.exists(ISLAND_DATA_FILE):
 
     island_data = {
         "rotation_index": 0,
 
         "Четверг": {
-            "date": "05.06.2025",
+            "date": "12.06.2025",
             "places": {
                 "1 место": "Obsidian",
                 "2 место": "Худричи",
@@ -146,6 +166,31 @@ def save_points(data):
             indent=4
         )
 
+def load_families():
+
+    with open(
+        FAMILIES_FILE,
+        "r",
+        encoding="utf-8"
+    ) as f:
+
+        return json.load(f)
+
+def save_families(data):
+
+    with open(
+        FAMILIES_FILE,
+        "w",
+        encoding="utf-8"
+    ) as f:
+
+        json.dump(
+            data,
+            f,
+            ensure_ascii=False,
+            indent=4
+        )
+
 def load_island():
 
     with open(
@@ -172,7 +217,7 @@ def save_island(data):
         )
 
 # =====================================================
-# Messages
+# Сообщения
 # =====================================================
 def save_message(
     file_name,
@@ -226,6 +271,28 @@ def create_points_embed():
             value=f"👑 {family}",
             inline=False
         )
+
+    return embed
+
+# =====================================================
+# Embed families
+# =====================================================
+def create_families_embed():
+
+    families = load_families()
+
+    embed = discord.Embed(
+        title="👑 Список семей",
+        color=0x2b2d31
+    )
+
+    text = ""
+
+    for i, family in enumerate(families, start=1):
+
+        text += f"**{i}.** {family}\n"
+
+    embed.description = text
 
     return embed
 
@@ -312,114 +379,20 @@ async def update_message(
         )
 
     except:
-
         pass
 
 # =====================================================
-# Ротация острова
-# =====================================================
-def rotate_island():
-
-    data = load_island()
-
-    index = data["rotation_index"]
-
-    index += 1
-
-    if index >= len(FAMILIES):
-
-        index = 0
-
-    thursday = []
-
-    for i in range(3):
-
-        family_index = (
-            index + i
-        ) % len(FAMILIES)
-
-        thursday.append(
-            FAMILIES[family_index]
-        )
-
-    sunday = []
-
-    for i in range(1, 4):
-
-        family_index = (
-            index + i
-        ) % len(FAMILIES)
-
-        sunday.append(
-            FAMILIES[family_index]
-        )
-
-    today = datetime.now()
-
-    days_until_thursday = (
-        3 - today.weekday()
-    ) % 7
-
-    if days_until_thursday == 0:
-
-        days_until_thursday = 7
-
-    next_thursday = (
-        today + timedelta(
-            days=days_until_thursday
-        )
-    )
-
-    days_until_sunday = (
-        6 - today.weekday()
-    ) % 7
-
-    if days_until_sunday == 0:
-
-        days_until_sunday = 7
-
-    next_sunday = (
-        today + timedelta(
-            days=days_until_sunday
-        )
-    )
-
-    data["rotation_index"] = index
-
-    data["Четверг"] = {
-        "date": next_thursday.strftime(
-            "%d.%m.%Y"
-        ),
-        "places": {
-            "1 место": thursday[0],
-            "2 место": thursday[1],
-            "3 место": thursday[2]
-        }
-    }
-
-    data["Воскресение"] = {
-        "date": next_sunday.strftime(
-            "%d.%m.%Y"
-        ),
-        "places": {
-            "1 место": sunday[0],
-            "2 место": sunday[1],
-            "3 место": sunday[2]
-        }
-    }
-
-    save_island(data)
-
-# =====================================================
-# Select families
+# Select Family
 # =====================================================
 class FamilySelect(Select):
 
     def __init__(self):
 
+        families = load_families()
+
         options = []
 
-        for family in FAMILIES:
+        for family in families:
 
             options.append(
                 discord.SelectOption(
@@ -452,7 +425,7 @@ class FamilySelect(Select):
         )
 
 # =====================================================
-# Select points
+# Select Point
 # =====================================================
 class PointSelect(Select):
 
@@ -503,16 +476,9 @@ class PointSelect(Select):
             color=0x00ff99
         )
 
-        embed.add_field(
-            name="📍 Точка",
-            value=point,
-            inline=False
-        )
-
-        embed.add_field(
-            name="👑 Семья",
-            value=self.family_name,
-            inline=False
+        embed.description = (
+            f"📍 {point}\n"
+            f"👑 {self.family_name}"
         )
 
         await interaction.response.edit_message(
@@ -570,17 +536,17 @@ async def points(
     )
 
 # =====================================================
-# /island
+# /families
 # =====================================================
 @tree.command(
-    name="island",
-    description="Список острова"
+    name="families",
+    description="Список семей"
 )
-async def island(
+async def families(
     interaction: discord.Interaction
 ):
 
-    embed = create_island_embed()
+    embed = create_families_embed()
 
     await interaction.response.send_message(
         embed=embed
@@ -589,7 +555,7 @@ async def island(
     message = await interaction.original_response()
 
     save_message(
-        ISLAND_MESSAGE_FILE,
+        FAMILIES_MESSAGE_FILE,
         interaction.channel.id,
         message.id
     )
@@ -617,6 +583,141 @@ async def setfamily(
     )
 
 # =====================================================
+# /setallpoints
+# =====================================================
+@tree.command(
+    name="setallpoints",
+    description="Назначить семью на все точки"
+)
+async def setallpoints(
+    interaction: discord.Interaction,
+    family: str
+):
+
+    data = load_points()
+
+    for point in data:
+
+        data[point] = family
+
+    save_points(data)
+
+    await update_message(
+        POINTS_MESSAGE_FILE,
+        create_points_embed()
+    )
+
+    embed = discord.Embed(
+        title="✅ Все точки обновлены",
+        description=f"👑 {family}",
+        color=0x00ff99
+    )
+
+    await interaction.response.send_message(
+        embed=embed,
+        ephemeral=True
+    )
+
+# =====================================================
+# /addfamily
+# =====================================================
+@tree.command(
+    name="addfamily",
+    description="Добавить семью"
+)
+async def addfamily(
+    interaction: discord.Interaction,
+    family: str
+):
+
+    families = load_families()
+
+    if family in families:
+
+        await interaction.response.send_message(
+            "❌ Семья уже существует",
+            ephemeral=True
+        )
+
+        return
+
+    families.append(family)
+
+    save_families(families)
+
+    await update_message(
+        FAMILIES_MESSAGE_FILE,
+        create_families_embed()
+    )
+
+    await interaction.response.send_message(
+        f"✅ Семья {family} добавлена",
+        ephemeral=True
+    )
+
+# =====================================================
+# /removefamily
+# =====================================================
+@tree.command(
+    name="removefamily",
+    description="Удалить семью"
+)
+async def removefamily(
+    interaction: discord.Interaction,
+    family: str
+):
+
+    families = load_families()
+
+    if family not in families:
+
+        await interaction.response.send_message(
+            "❌ Семья не найдена",
+            ephemeral=True
+        )
+
+        return
+
+    families.remove(family)
+
+    save_families(families)
+
+    await update_message(
+        FAMILIES_MESSAGE_FILE,
+        create_families_embed()
+    )
+
+    await interaction.response.send_message(
+        f"✅ Семья {family} удалена",
+        ephemeral=True
+    )
+
+# =====================================================
+# /island
+# =====================================================
+@tree.command(
+    name="island",
+    description="Список острова"
+)
+async def island(
+    interaction: discord.Interaction
+):
+
+    embed = create_island_embed()
+
+    await interaction.response.send_message(
+        embed=embed
+    )
+
+    message = await interaction.original_response()
+
+    save_message(
+        ISLAND_MESSAGE_FILE,
+        interaction.channel.id,
+        message.id
+    )
+
+# =====================================================
 # /setisland
 # =====================================================
 @tree.command(
@@ -641,13 +742,8 @@ async def setisland(
         create_island_embed()
     )
 
-    embed = discord.Embed(
-        title="✅ Остров обновлен",
-        color=0x00ff99
-    )
-
     await interaction.response.send_message(
-        embed=embed,
+        "✅ Остров обновлен",
         ephemeral=True
     )
 
@@ -677,13 +773,8 @@ async def setislanddate(
         create_island_embed()
     )
 
-    embed = discord.Embed(
-        title="✅ Даты острова обновлены",
-        color=0x00ff99
-    )
-
     await interaction.response.send_message(
-        embed=embed,
+        "✅ Даты обновлены",
         ephemeral=True
     )
 
@@ -702,7 +793,7 @@ async def clear(
     if not interaction.user.guild_permissions.manage_messages:
 
         await interaction.response.send_message(
-            "❌ Нет прав.",
+            "❌ Нет прав",
             ephemeral=True
         )
 
@@ -716,53 +807,16 @@ async def clear(
         limit=amount
     )
 
-    embed = discord.Embed(
-        title="🗑️ Сообщения удалены",
-        description=f"Удалено: **{len(deleted)}**",
-        color=0xff0000
-    )
-
     await interaction.followup.send(
-        embed=embed,
+        f"🗑️ Удалено сообщений: {len(deleted)}",
         ephemeral=True
     )
-
-# =====================================================
-# Автообновление острова
-# =====================================================
-@tasks.loop(hours=1)
-async def island_rotation_task():
-
-    now = datetime.now()
-
-    weekday = now.weekday()
-
-    hour = now.hour
-
-    minute = now.minute
-
-    if (
-        weekday in [3, 6]
-        and hour == 0
-        and minute < 5
-    ):
-
-        rotate_island()
-
-        await update_message(
-            ISLAND_MESSAGE_FILE,
-            create_island_embed()
-        )
 
 # =====================================================
 # READY
 # =====================================================
 @bot.event
 async def on_ready():
-
-    if not island_rotation_task.is_running():
-
-        island_rotation_task.start()
 
     try:
 
@@ -786,3 +840,4 @@ async def on_ready():
 # START
 # =====================================================
 bot.run(TOKEN)
+```
