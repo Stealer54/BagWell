@@ -483,6 +483,103 @@ class PointSelect(Select):
         )
 
 # =====================================================
+# MASS SET POINTS
+# =====================================================
+class AllPointsSelect(Select):
+
+    def __init__(self):
+
+        points_data = load_points()
+
+        options = []
+
+        for point, owner in points_data.items():
+
+            options.append(
+
+                discord.SelectOption(
+                    label=point,
+                    description=f"Текущий владелец: {owner}"
+                )
+            )
+
+        super().__init__(
+            placeholder="Выберите точку",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+
+    async def callback(
+        self,
+        interaction: discord.Interaction
+    ):
+
+        selected_point = self.values[0]
+
+        await interaction.response.edit_message(
+            embed=create_points_embed(),
+            view=AllFamiliesView(selected_point)
+        )
+
+class AllFamiliesSelect(Select):
+
+    def __init__(self, point_name):
+
+        self.point_name = point_name
+
+        families = load_families()
+
+        options = []
+
+        for family in families:
+
+            options.append(
+                discord.SelectOption(
+                    label=family
+                )
+            )
+
+        super().__init__(
+            placeholder=f"Семья для: {point_name}",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+
+    async def callback(
+        self,
+        interaction: discord.Interaction
+    ):
+
+        selected_family = self.values[0]
+
+        points_data = load_points()
+
+        points_data[self.point_name] = selected_family
+
+        save_points(points_data)
+
+        await update_message(
+            POINTS_MESSAGE_FILE,
+            create_points_embed()
+        )
+
+        embed = discord.Embed(
+            title="✅ Точка обновлена",
+            description=(
+                f"📍 {self.point_name}\n"
+                f"👑 {selected_family}"
+            ),
+            color=0x00ff99
+        )
+
+        await interaction.response.edit_message(
+            embed=embed,
+            view=AllPointsView()
+        )
+
+# =====================================================
 # REMOVE FAMILY SELECT
 # =====================================================
 class RemoveFamilySelect(Select):
@@ -574,6 +671,26 @@ class RemoveFamilyView(View):
             RemoveFamilySelect()
         )
 
+class AllPointsView(View):
+
+    def __init__(self):
+
+        super().__init__(timeout=None)
+
+        self.add_item(
+            AllPointsSelect()
+        )
+
+class AllFamiliesView(View):
+
+    def __init__(self, point_name):
+
+        super().__init__(timeout=None)
+
+        self.add_item(
+            AllFamiliesSelect(point_name)
+        )
+
 # =====================================================
 # /points
 # =====================================================
@@ -651,34 +768,15 @@ async def setfamily(
 # =====================================================
 @tree.command(
     name="setallpoints",
-    description="Назначить семью на все точки"
+    description="Массовая настройка точек"
 )
 async def setallpoints(
-    interaction: discord.Interaction,
-    family: str
+    interaction: discord.Interaction
 ):
 
-    data = load_points()
-
-    for point in data:
-
-        data[point] = family
-
-    save_points(data)
-
-    await update_message(
-        POINTS_MESSAGE_FILE,
-        create_points_embed()
-    )
-
-    embed = discord.Embed(
-        title="✅ Все точки обновлены",
-        description=f"👑 {family}",
-        color=0x00ff99
-    )
-
     await interaction.response.send_message(
-        embed=embed,
+        embed=create_points_embed(),
+        view=AllPointsView(),
         ephemeral=True
     )
 
