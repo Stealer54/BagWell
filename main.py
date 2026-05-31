@@ -36,11 +36,9 @@ DATA_FILE = "points.json"
 
 POINTS_MESSAGE_FILE = "points_message.json"
 
-FAMILIES_MESSAGE_FILE = "families_message.json"
+ISLAND_FILE = "island_message.json"
 
-ISLAND_FILE = "island.json"
-
-ISLAND_MESSAGE_FILE = "island_message.json"
+ISLAND_DATA_FILE = "island.json"
 
 # =====================================================
 # Точки влияния
@@ -88,32 +86,32 @@ if not os.path.exists(DATA_FILE):
 # =====================================================
 # Создание island.json
 # =====================================================
-if not os.path.exists(ISLAND_FILE):
+if not os.path.exists(ISLAND_DATA_FILE):
 
     island_data = {
         "rotation_index": 0,
 
         "Четверг": {
-            "date": "Не назначено",
+            "date": "05.06.2025",
             "places": {
-                "1 место": FAMILIES[0],
-                "2 место": FAMILIES[1],
-                "3 место": FAMILIES[2]
+                "1 место": "Obsidian",
+                "2 место": "Худричи",
+                "3 место": "Reseller"
             }
         },
 
         "Воскресение": {
-            "date": "Не назначено",
+            "date": "08.06.2025",
             "places": {
-                "1 место": FAMILIES[1],
-                "2 место": FAMILIES[2],
-                "3 место": FAMILIES[3]
+                "1 место": "Худричи",
+                "2 место": "Reseller",
+                "3 место": "Demorgan"
             }
         }
     }
 
     with open(
-        ISLAND_FILE,
+        ISLAND_DATA_FILE,
         "w",
         encoding="utf-8"
     ) as f:
@@ -162,7 +160,7 @@ def save_points(data):
 def load_island():
 
     with open(
-        ISLAND_FILE,
+        ISLAND_DATA_FILE,
         "r",
         encoding="utf-8"
     ) as f:
@@ -175,7 +173,7 @@ def load_island():
 def save_island(data):
 
     with open(
-        ISLAND_FILE,
+        ISLAND_DATA_FILE,
         "w",
         encoding="utf-8"
     ) as f:
@@ -227,11 +225,6 @@ def create_island_embed():
 
         text = ""
 
-        text += (
-            f"📅 Дата: "
-            f"**{info['date']}**\n\n"
-        )
-
         for place, family in info["places"].items():
 
             text += (
@@ -239,8 +232,11 @@ def create_island_embed():
             )
 
         embed.add_field(
-            name=day,
-            value=text,
+            name=f"📍 {day}",
+            value=(
+                f"## 📅 {info['date']}\n\n"
+                + text
+            ),
             inline=False
         )
 
@@ -255,9 +251,6 @@ def rotate_island():
 
     index = data["rotation_index"]
 
-    # =================================================
-    # Следующая ротация
-    # =================================================
     index += 1
 
     if index >= len(FAMILIES):
@@ -327,9 +320,6 @@ def rotate_island():
         )
     )
 
-    # =================================================
-    # Обновление данных
-    # =================================================
     data["rotation_index"] = index
 
     data["Четверг"] = {
@@ -606,7 +596,7 @@ async def island(
     message = await interaction.original_response()
 
     save_message(
-        ISLAND_MESSAGE_FILE,
+        ISLAND_FILE,
         interaction.channel.id,
         message.id
     )
@@ -654,7 +644,7 @@ async def setisland(
     save_island(data)
 
     await update_message(
-        ISLAND_MESSAGE_FILE,
+        ISLAND_FILE,
         create_island_embed()
     )
 
@@ -746,7 +736,7 @@ async def island_rotation_task():
         rotate_island()
 
         await update_message(
-            ISLAND_MESSAGE_FILE,
+            ISLAND_FILE,
             create_island_embed()
         )
 
