@@ -1,4 +1,3 @@
-```python
 import os
 import json
 import discord
@@ -945,4 +944,3 @@ async def on_ready():
 # START
 # =====================================================
 bot.run(TOKEN)
-```
