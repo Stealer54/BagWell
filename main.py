@@ -140,7 +140,7 @@ if not os.path.exists(ISLAND_FILE):
         )
 
 # =====================================================
-# LOAD POINTS
+# LOAD / SAVE
 # =====================================================
 def load_points():
 
@@ -152,9 +152,6 @@ def load_points():
 
         return json.load(f)
 
-# =====================================================
-# SAVE POINTS
-# =====================================================
 def save_points(data):
 
     with open(
@@ -170,9 +167,6 @@ def save_points(data):
             indent=4
         )
 
-# =====================================================
-# LOAD FAMILIES
-# =====================================================
 def load_families():
 
     with open(
@@ -183,9 +177,6 @@ def load_families():
 
         return json.load(f)
 
-# =====================================================
-# SAVE FAMILIES
-# =====================================================
 def save_families(data):
 
     with open(
@@ -201,9 +192,6 @@ def save_families(data):
             indent=4
         )
 
-# =====================================================
-# LOAD ISLAND
-# =====================================================
 def load_island():
 
     with open(
@@ -214,9 +202,6 @@ def load_island():
 
         return json.load(f)
 
-# =====================================================
-# SAVE ISLAND
-# =====================================================
 def save_island(data):
 
     with open(
@@ -301,7 +286,7 @@ async def update_message(
         pass
 
 # =====================================================
-# EMBED POINTS
+# EMBEDS
 # =====================================================
 def create_points_embed():
 
@@ -322,9 +307,6 @@ def create_points_embed():
 
     return embed
 
-# =====================================================
-# EMBED FAMILIES
-# =====================================================
 def create_families_embed():
 
     families = load_families()
@@ -344,9 +326,6 @@ def create_families_embed():
 
     return embed
 
-# =====================================================
-# EMBED ISLAND
-# =====================================================
 def create_island_embed():
 
     data = load_island()
@@ -504,7 +483,7 @@ class PointSelect(Select):
         )
 
 # =====================================================
-# SELECT REMOVE FAMILY
+# REMOVE FAMILY SELECT
 # =====================================================
 class RemoveFamilySelect(Select):
 
@@ -673,9 +652,6 @@ async def setfamily(
 @tree.command(
     name="setallpoints",
     description="Назначить семью на все точки"
-)
-@app_commands.describe(
-    family="Название семьи"
 )
 async def setallpoints(
     interaction: discord.Interaction,
