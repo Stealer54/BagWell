@@ -103,7 +103,31 @@ if not os.path.exists(FAMILIES_FILE):
             ensure_ascii=False,
             indent=4
         )
+# =====================================================
+# CREATE ISLAND QUEUE
+# =====================================================
+if not os.path.exists(ISLAND_QUEUE_FILE):
 
+    with open(
+        ISLAND_QUEUE_FILE,
+        "w",
+        encoding="utf-8"
+    ) as f:
+
+        json.dump(
+            [
+                "Худричи",
+                "Reseller",
+                "Demorgan",
+                "Giudice",
+                "Miamori",
+                "Fruktik",
+                "Obsidian"
+            ],
+            f,
+            ensure_ascii=False,
+            indent=4
+        )
 if not os.path.exists(ISLAND_FILE):
 
     island_data = {
