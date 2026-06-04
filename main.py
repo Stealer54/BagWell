@@ -1015,7 +1015,62 @@ async def setisland(
         embed=embed,
         ephemeral=True
     )
+# =====================================================
+# /finishisland
+# =====================================================
+@tree.command(
+    name="finishisland",
+    description="Завершить остров"
+)
+async def finishisland(
+    interaction: discord.Interaction
+):
 
+    queue = load_island_queue()
+
+    queue = queue[1:] + [queue[0]]
+
+    save_island_queue(queue)
+
+    island_data = load_island()
+
+    island_data["Четверг"]["places"] = {
+        "1 место": queue[0],
+        "2 место": queue[1],
+        "3 место": queue[2]
+    }
+
+    island_data["Воскресение"]["places"] = {
+        "1 место": queue[1],
+        "2 место": queue[2],
+        "3 место": queue[3]
+    }
+
+    save_island(island_data)
+
+    await update_message(
+        ISLAND_MESSAGE_FILE,
+        create_island_embed()
+    )
+
+    await update_message(
+        ISLANDQUEUE_MESSAGE_FILE,
+        create_islandqueue_embed()
+    )
+
+    embed = discord.Embed(
+        title="✅ Остров завершён",
+        description=(
+            "Очередь обновлена.\n"
+            f"👑 Новый лидер: {queue[0]}"
+        ),
+        color=0x00ff99
+    )
+
+    await interaction.response.send_message(
+        embed=embed,
+        ephemeral=True
+    )
 # =====================================================
 # /setislanddate
 # =====================================================
