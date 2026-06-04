@@ -42,6 +42,9 @@ FAMILIES_MESSAGE_FILE = "families_message.json"
 
 ISLAND_MESSAGE_FILE = "island_message.json"
 
+ISLAND_QUEUE_FILE = "island_queue.json"
+
+ISLANDQUEUE_MESSAGE_FILE = "islandqueue_message.json"
 # =====================================================
 # DEFAULT POINTS
 # =====================================================
@@ -218,6 +221,34 @@ def save_island(data):
         )
 
 # =====================================================
+# ISLAND QUEUE
+# =====================================================
+def load_island_queue():
+
+    with open(
+        ISLAND_QUEUE_FILE,
+        "r",
+        encoding="utf-8"
+    ) as f:
+
+        return json.load(f)
+
+def save_island_queue(data):
+
+    with open(
+        ISLAND_QUEUE_FILE,
+        "w",
+        encoding="utf-8"
+    ) as f:
+
+        json.dump(
+            data,
+            f,
+            ensure_ascii=False,
+            indent=4
+        )
+
+# =====================================================
 # MESSAGE SYSTEM
 # =====================================================
 def save_message(
@@ -374,6 +405,32 @@ def create_island_embed():
             ),
             inline=False
         )
+
+    return embed
+# =====================================================
+# ISLAND QUEUE EMBED
+# =====================================================
+def create_islandqueue_embed():
+
+    queue = load_island_queue()
+
+    embed = discord.Embed(
+        title="📋 Очередь острова",
+        color=0x2b2d31
+    )
+
+    text = ""
+
+    for i, family in enumerate(
+        queue,
+        start=1
+    ):
+
+        text += (
+            f"**{i}.** 👑 {family}\n"
+        )
+
+    embed.description = text
 
     return embed
 
@@ -866,6 +923,31 @@ async def island(
 
     save_message(
         ISLAND_MESSAGE_FILE,
+        interaction.channel.id,
+        message.id
+    )
+
+# =====================================================
+# /islandqueue
+# =====================================================
+@tree.command(
+    name="islandqueue",
+    description="Очередь острова"
+)
+async def islandqueue(
+    interaction: discord.Interaction
+):
+
+    embed = create_islandqueue_embed()
+
+    await interaction.response.send_message(
+        embed=embed
+    )
+
+    message = await interaction.original_response()
+
+    save_message(
+        ISLANDQUEUE_MESSAGE_FILE,
         interaction.channel.id,
         message.id
     )
