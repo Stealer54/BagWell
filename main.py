@@ -1034,29 +1034,29 @@ async def finishisland(
 
     island_data = load_island()
 
-current_thursday = island_data["Четверг"]
+    current_thursday = island_data["Четверг"]
 
-old_thursday_date = datetime.strptime(
-    current_thursday["date"],
-    "%d.%m.%Y"
-)
+    old_thursday_date = datetime.strptime(
+        current_thursday["date"],
+        "%d.%m.%Y"
+    )
 
-new_thursday_date = (
-    old_thursday_date + timedelta(days=7)
-).strftime("%d.%m.%Y")
+    new_thursday_date = (
+        old_thursday_date + timedelta(days=7)
+    ).strftime("%d.%m.%Y")
 
-island_data["Воскресение"] = current_thursday
+    island_data["Воскресение"] = current_thursday
 
-island_data["Четверг"] = {
-    "date": new_thursday_date,
-    "places": {
-        "1 место": queue[0],
-        "2 место": queue[1],
-        "3 место": queue[2]
+    island_data["Четверг"] = {
+        "date": new_thursday_date,
+        "places": {
+            "1 место": queue[0],
+            "2 место": queue[1],
+            "3 место": queue[2]
+        }
     }
-}
 
-save_island(island_data)
+    save_island(island_data)
 
     await update_message(
         ISLAND_MESSAGE_FILE,
