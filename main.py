@@ -1,5 +1,7 @@
 import os
 import json
+import asyncio
+import threading
 import discord
 
 from datetime import datetime, timedelta
@@ -7,17 +9,35 @@ from discord.ext import commands
 from discord import app_commands
 from discord.ui import View, Select
 from dotenv import load_dotenv
+from flask import Flask, request, jsonify
 
 # =====================================================
 # Загрузка .env
 # =====================================================
+
 load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 # =====================================================
+# НАСТРОЙКИ САЙТА
+# =====================================================
+
+ANKETA_CHANNEL_ID = int(
+    os.getenv("ANKETA_CHANNEL_ID", "0")
+)
+
+SITE_SECRET = os.getenv(
+    "SITE_SECRET",
+    ""
+)
+
+app = Flask(__name__)
+
+# =====================================================
 # Discord
 # =====================================================
+
 intents = discord.Intents.default()
 
 bot = commands.Bot(
@@ -30,6 +50,7 @@ tree = bot.tree
 # =====================================================
 # FILES
 # =====================================================
+
 POINTS_FILE = "points.json"
 
 FAMILIES_FILE = "families.json"
@@ -45,9 +66,11 @@ ISLAND_MESSAGE_FILE = "island_message.json"
 ISLAND_QUEUE_FILE = "island_queue.json"
 
 ISLANDQUEUE_MESSAGE_FILE = "islandqueue_message.json"
+
 # =====================================================
 # DEFAULT POINTS
 # =====================================================
+
 DEFAULT_POINTS = {
     "Баржа": "Свободно",
     "Старые Фибы (Noose)": "Свободно",
@@ -60,6 +83,7 @@ DEFAULT_POINTS = {
 # =====================================================
 # DEFAULT FAMILIES
 # =====================================================
+
 DEFAULT_FAMILIES = [
     "Reseller",
     "Giudice",
@@ -74,6 +98,7 @@ DEFAULT_FAMILIES = [
 # =====================================================
 # CREATE FILES
 # =====================================================
+
 if not os.path.exists(POINTS_FILE):
 
     with open(
@@ -89,6 +114,7 @@ if not os.path.exists(POINTS_FILE):
             indent=4
         )
 
+
 if not os.path.exists(FAMILIES_FILE):
 
     with open(
@@ -103,9 +129,12 @@ if not os.path.exists(FAMILIES_FILE):
             ensure_ascii=False,
             indent=4
         )
+
+
 # =====================================================
 # CREATE ISLAND QUEUE
 # =====================================================
+
 if not os.path.exists(ISLAND_QUEUE_FILE):
 
     with open(
@@ -128,6 +157,12 @@ if not os.path.exists(ISLAND_QUEUE_FILE):
             ensure_ascii=False,
             indent=4
         )
+
+
+# =====================================================
+# CREATE ISLAND
+# =====================================================
+
 if not os.path.exists(ISLAND_FILE):
 
     island_data = {
@@ -166,9 +201,11 @@ if not os.path.exists(ISLAND_FILE):
             indent=4
         )
 
+
 # =====================================================
 # LOAD / SAVE
 # =====================================================
+
 def load_points():
 
     with open(
@@ -178,6 +215,7 @@ def load_points():
     ) as f:
 
         return json.load(f)
+
 
 def save_points(data):
 
@@ -194,6 +232,7 @@ def save_points(data):
             indent=4
         )
 
+
 def load_families():
 
     with open(
@@ -203,6 +242,7 @@ def load_families():
     ) as f:
 
         return json.load(f)
+
 
 def save_families(data):
 
@@ -219,6 +259,7 @@ def save_families(data):
             indent=4
         )
 
+
 def load_island():
 
     with open(
@@ -228,6 +269,7 @@ def load_island():
     ) as f:
 
         return json.load(f)
+
 
 def save_island(data):
 
@@ -244,9 +286,11 @@ def save_island(data):
             indent=4
         )
 
+
 # =====================================================
 # ISLAND QUEUE
 # =====================================================
+
 def load_island_queue():
 
     with open(
@@ -256,6 +300,7 @@ def load_island_queue():
     ) as f:
 
         return json.load(f)
+
 
 def save_island_queue(data):
 
@@ -272,9 +317,11 @@ def save_island_queue(data):
             indent=4
         )
 
+
 # =====================================================
 # MESSAGE SYSTEM
 # =====================================================
+
 def save_message(
     file_name,
     channel_id,
@@ -294,6 +341,7 @@ def save_message(
 
         json.dump(data, f)
 
+
 def load_message(file_name):
 
     if not os.path.exists(file_name):
@@ -308,6 +356,7 @@ def load_message(file_name):
 
         return json.load(f)
 
+
 async def update_message(
     file_name,
     embed
@@ -316,7 +365,6 @@ async def update_message(
     data = load_message(file_name)
 
     if not data:
-
         return
 
     try:
@@ -326,7 +374,6 @@ async def update_message(
         )
 
         if not channel:
-
             return
 
         message = await channel.fetch_message(
@@ -337,12 +384,14 @@ async def update_message(
             embed=embed
         )
 
-    except:
+    except Exception:
         pass
+
 
 # =====================================================
 # EMBEDS
 # =====================================================
+
 def create_points_embed():
 
     data = load_points()
@@ -362,6 +411,7 @@ def create_points_embed():
 
     return embed
 
+
 def create_families_embed():
 
     families = load_families()
@@ -373,13 +423,17 @@ def create_families_embed():
 
     text = ""
 
-    for i, family in enumerate(families, start=1):
+    for i, family in enumerate(
+        families,
+        start=1
+    ):
 
         text += f"**{i}.** {family}\n"
 
     embed.description = text
 
     return embed
+
 
 def create_island_embed():
 
@@ -431,9 +485,12 @@ def create_island_embed():
         )
 
     return embed
+
+
 # =====================================================
 # ISLAND QUEUE EMBED
 # =====================================================
+
 def create_islandqueue_embed():
 
     queue = load_island_queue()
@@ -458,9 +515,11 @@ def create_islandqueue_embed():
 
     return embed
 
+
 # =====================================================
 # SELECT FAMILY
 # =====================================================
+
 class FamilySelect(Select):
 
     def __init__(self):
@@ -501,12 +560,17 @@ class FamilySelect(Select):
             embed=None
         )
 
+
 # =====================================================
 # SELECT POINT
 # =====================================================
+
 class PointSelect(Select):
 
-    def __init__(self, family_name):
+    def __init__(
+        self,
+        family_name
+    ):
 
         self.family_name = family_name
 
@@ -563,9 +627,11 @@ class PointSelect(Select):
             content=None
         )
 
+
 # =====================================================
 # MASS SET POINTS
 # =====================================================
+
 class AllPointsSelect(Select):
 
     def __init__(self):
@@ -577,7 +643,6 @@ class AllPointsSelect(Select):
         for point, owner in points_data.items():
 
             options.append(
-
                 discord.SelectOption(
                     label=point,
                     description=f"Текущий владелец: {owner}"
@@ -603,9 +668,13 @@ class AllPointsSelect(Select):
             view=AllFamiliesView(selected_point)
         )
 
+
 class AllFamiliesSelect(Select):
 
-    def __init__(self, point_name):
+    def __init__(
+        self,
+        point_name
+    ):
 
         self.point_name = point_name
 
@@ -660,9 +729,11 @@ class AllFamiliesSelect(Select):
             view=AllPointsView()
         )
 
+
 # =====================================================
 # REMOVE FAMILY SELECT
 # =====================================================
+
 class RemoveFamilySelect(Select):
 
     def __init__(self):
@@ -696,10 +767,11 @@ class RemoveFamilySelect(Select):
         families = load_families()
 
         if selected_family not in families:
-
             return
 
-        families.remove(selected_family)
+        families.remove(
+            selected_family
+        )
 
         save_families(families)
 
@@ -719,62 +791,88 @@ class RemoveFamilySelect(Select):
             view=None
         )
 
+
 # =====================================================
 # VIEWS
 # =====================================================
+
 class FamilyView(View):
 
     def __init__(self):
 
-        super().__init__(timeout=None)
+        super().__init__(
+            timeout=None
+        )
 
         self.add_item(
             FamilySelect()
         )
 
+
 class PointView(View):
 
-    def __init__(self, family):
+    def __init__(
+        self,
+        family
+    ):
 
-        super().__init__(timeout=None)
+        super().__init__(
+            timeout=None
+        )
 
         self.add_item(
             PointSelect(family)
         )
 
+
 class RemoveFamilyView(View):
 
     def __init__(self):
 
-        super().__init__(timeout=None)
+        super().__init__(
+            timeout=None
+        )
 
         self.add_item(
             RemoveFamilySelect()
         )
 
+
 class AllPointsView(View):
 
     def __init__(self):
 
-        super().__init__(timeout=None)
+        super().__init__(
+            timeout=None
+        )
 
         self.add_item(
             AllPointsSelect()
         )
 
+
 class AllFamiliesView(View):
 
-    def __init__(self, point_name):
+    def __init__(
+        self,
+        point_name
+    ):
 
-        super().__init__(timeout=None)
+        super().__init__(
+            timeout=None
+        )
 
         self.add_item(
-            AllFamiliesSelect(point_name)
+            AllFamiliesSelect(
+                point_name
+            )
         )
+
 
 # =====================================================
 # /points
 # =====================================================
+
 @tree.command(
     name="points",
     description="Список точек"
@@ -797,9 +895,11 @@ async def points(
         message.id
     )
 
+
 # =====================================================
 # /families
 # =====================================================
+
 @tree.command(
     name="families",
     description="Список семей"
@@ -822,9 +922,11 @@ async def families(
         message.id
     )
 
+
 # =====================================================
 # /setfamily
 # =====================================================
+
 @tree.command(
     name="setfamily",
     description="Назначить семью"
@@ -844,9 +946,11 @@ async def setfamily(
         ephemeral=True
     )
 
+
 # =====================================================
 # /setallpoints
 # =====================================================
+
 @tree.command(
     name="setallpoints",
     description="Массовая настройка точек"
@@ -861,9 +965,11 @@ async def setallpoints(
         ephemeral=True
     )
 
+
 # =====================================================
 # /addfamily
 # =====================================================
+
 @tree.command(
     name="addfamily",
     description="Добавить семью"
@@ -884,9 +990,13 @@ async def addfamily(
 
         return
 
-    families.append(family)
+    families.append(
+        family
+    )
 
-    save_families(families)
+    save_families(
+        families
+    )
 
     await update_message(
         FAMILIES_MESSAGE_FILE,
@@ -904,9 +1014,11 @@ async def addfamily(
         ephemeral=True
     )
 
+
 # =====================================================
 # /removefamily
 # =====================================================
+
 @tree.command(
     name="removefamily",
     description="Удалить семью"
@@ -926,9 +1038,11 @@ async def removefamily(
         ephemeral=True
     )
 
+
 # =====================================================
 # /island
 # =====================================================
+
 @tree.command(
     name="island",
     description="Список острова"
@@ -951,9 +1065,11 @@ async def island(
         message.id
     )
 
+
 # =====================================================
 # /islandqueue
 # =====================================================
+
 @tree.command(
     name="islandqueue",
     description="Очередь острова"
@@ -976,9 +1092,11 @@ async def islandqueue(
         message.id
     )
 
+
 # =====================================================
 # /setisland
 # =====================================================
+
 @tree.command(
     name="setisland",
     description="Назначить семью на остров"
@@ -994,7 +1112,9 @@ async def setisland(
 
     data[day]["places"][place] = family
 
-    save_island(data)
+    save_island(
+        data
+    )
 
     await update_message(
         ISLAND_MESSAGE_FILE,
@@ -1015,9 +1135,12 @@ async def setisland(
         embed=embed,
         ephemeral=True
     )
+
+
 # =====================================================
 # /finishisland
 # =====================================================
+
 @tree.command(
     name="finishisland",
     description="Завершить остров"
@@ -1030,7 +1153,9 @@ async def finishisland(
 
     queue = queue[1:] + [queue[0]]
 
-    save_island_queue(queue)
+    save_island_queue(
+        queue
+    )
 
     island_data = load_island()
 
@@ -1056,7 +1181,9 @@ async def finishisland(
         }
     }
 
-    save_island(island_data)
+    save_island(
+        island_data
+    )
 
     await update_message(
         ISLAND_MESSAGE_FILE,
@@ -1081,9 +1208,12 @@ async def finishisland(
         embed=embed,
         ephemeral=True
     )
+
+
 # =====================================================
 # /setislanddate
 # =====================================================
+
 @tree.command(
     name="setislanddate",
     description="Изменить даты острова"
@@ -1100,7 +1230,9 @@ async def setislanddate(
 
     data["Воскресение"]["date"] = sunday_date
 
-    save_island(data)
+    save_island(
+        data
+    )
 
     await update_message(
         ISLAND_MESSAGE_FILE,
@@ -1121,9 +1253,11 @@ async def setislanddate(
         ephemeral=True
     )
 
+
 # =====================================================
 # /clear
 # =====================================================
+
 @tree.command(
     name="clear",
     description="Удалить сообщения"
@@ -1161,9 +1295,367 @@ async def clear(
         ephemeral=True
     )
 
+
+# =====================================================
+# API САЙТА
+# =====================================================
+
+@app.after_request
+def add_cors_headers(response):
+
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = (
+        "Content-Type, X-Site-Secret"
+    )
+    response.headers["Access-Control-Allow-Methods"] = (
+        "GET, POST, OPTIONS"
+    )
+
+    return response
+
+
+@app.route("/")
+def website_status():
+
+    return "Discord bot is online"
+
+
+@app.route("/submit", methods=["POST", "OPTIONS"])
+def submit_anketa():
+
+    # Обработка OPTIONS-запроса от браузера
+    if request.method == "OPTIONS":
+
+        return "", 204
+
+    # =================================================
+    # Проверка секрета
+    # =================================================
+
+    if not SITE_SECRET:
+
+        return jsonify({
+            "success": False,
+            "error": "SITE_SECRET не настроен"
+        }), 500
+
+    secret = request.headers.get(
+        "X-Site-Secret"
+    )
+
+    if secret != SITE_SECRET:
+
+        return jsonify({
+            "success": False,
+            "error": "Неверный секрет"
+        }), 401
+
+    # =================================================
+    # Получение данных
+    # =================================================
+
+    data = request.get_json(
+        silent=True
+    )
+
+    if not data:
+
+        return jsonify({
+            "success": False,
+            "error": "Данные анкеты не получены"
+        }), 400
+
+    # =================================================
+    # Проверка Discord
+    # =================================================
+
+    if not bot.is_ready():
+
+        return jsonify({
+            "success": False,
+            "error": "Discord бот ещё не запущен"
+        }), 503
+
+    if ANKETA_CHANNEL_ID == 0:
+
+        return jsonify({
+            "success": False,
+            "error": "ANKETA_CHANNEL_ID не настроен"
+        }), 500
+
+    channel = bot.get_channel(
+        ANKETA_CHANNEL_ID
+    )
+
+    if channel is None:
+
+        return jsonify({
+            "success": False,
+            "error": "Канал для анкет не найден"
+        }), 500
+
+    # =================================================
+    # Получаем данные анкеты
+    # =================================================
+
+    nickname = data.get(
+        "nickname",
+        "Не указано"
+    )
+
+    level = data.get(
+        "level",
+        "Не указано"
+    )
+
+    account_id = data.get(
+        "account_id",
+        "Не указано"
+    )
+
+    age = data.get(
+        "age",
+        "Не указано"
+    )
+
+    name = data.get(
+        "name",
+        "Не указано"
+    )
+
+    city = data.get(
+        "city",
+        "Не указано"
+    )
+
+    discord_name = data.get(
+        "discord",
+        "Не указано"
+    )
+
+    online = data.get(
+        "online",
+        "Не указано"
+    )
+
+    forum = data.get(
+        "forum",
+        "Не указано"
+    )
+
+    vk = data.get(
+        "vk",
+        "Не указано"
+    )
+
+    rp_bio = data.get(
+        "rp_bio",
+        "Не указано"
+    )
+
+    personal_file = data.get(
+        "personal_file",
+        "Не указано"
+    )
+
+    reason = data.get(
+        "reason",
+        "Не указано"
+    )
+
+    high_position = data.get(
+        "high_position",
+        "Не указано"
+    )
+
+    linked = data.get(
+        "linked",
+        "Не указано"
+    )
+
+    twinks = data.get(
+        "twinks",
+        "Не указано"
+    )
+
+    position = data.get(
+        "position",
+        "Не указано"
+    )
+
+    # =================================================
+    # Создание Embed
+    # =================================================
+
+    embed = discord.Embed(
+        title="📋 НОВАЯ АНКЕТА",
+        color=0x2b2d31,
+        timestamp=datetime.now()
+    )
+
+    embed.add_field(
+        name="🎮 Игровой ник",
+        value=nickname[:1024],
+        inline=True
+    )
+
+    embed.add_field(
+        name="⭐ Игровой уровень",
+        value=level[:1024],
+        inline=True
+    )
+
+    embed.add_field(
+        name="🆔 ID Аккаунта",
+        value=account_id[:1024],
+        inline=True
+    )
+
+    embed.add_field(
+        name="🎂 Возраст",
+        value=age[:1024],
+        inline=True
+    )
+
+    embed.add_field(
+        name="👤 Имя",
+        value=name[:1024],
+        inline=True
+    )
+
+    embed.add_field(
+        name="🌆 Город",
+        value=city[:1024],
+        inline=True
+    )
+
+    embed.add_field(
+        name="💬 Дискорд",
+        value=discord_name[:1024],
+        inline=True
+    )
+
+    embed.add_field(
+        name="⏱️ Онлайн",
+        value=online[:1024],
+        inline=True
+    )
+
+    embed.add_field(
+        name="📌 Причина постановления",
+        value=reason[:1024],
+        inline=False
+    )
+
+    embed.add_field(
+        name="🏆 Занимал ли высокие должности",
+        value=high_position[:1024],
+        inline=False
+    )
+
+    embed.add_field(
+        name="🔐 Привязан ли аккаунт",
+        value=linked[:1024],
+        inline=False
+    )
+
+    embed.add_field(
+        name="👥 Твинки на 05 сервере",
+        value=twinks[:1024],
+        inline=False
+    )
+
+    embed.add_field(
+        name="💼 Должность",
+        value=position[:1024],
+        inline=False
+    )
+
+    # =================================================
+    # Ссылки
+    # =================================================
+
+    links_text = (
+        f"**Форум:** {forum}\n"
+        f"**VK:** {vk}\n"
+        f"**РП БИО:** {rp_bio}\n"
+        f"**Личное дело:** {personal_file}"
+    )
+
+    embed.add_field(
+        name="🔗 Ссылки",
+        value=links_text[:1024],
+        inline=False
+    )
+
+    embed.set_footer(
+        text="Анкета отправлена с сайта"
+    )
+
+    # =================================================
+    # Отправка в Discord
+    # =================================================
+
+    try:
+
+        future = asyncio.run_coroutine_threadsafe(
+            channel.send(embed=embed),
+            bot.loop
+        )
+
+        future.result(
+            timeout=15
+        )
+
+    except Exception as e:
+
+        print(
+            f"❌ Ошибка отправки анкеты: {e}"
+        )
+
+        return jsonify({
+            "success": False,
+            "error": "Не удалось отправить анкету в Discord"
+        }), 500
+
+    print(
+        f"✅ Новая анкета: {nickname}"
+    )
+
+    return jsonify({
+        "success": True,
+        "message": "Анкета успешно отправлена"
+    })
+
+
+# =====================================================
+# ЗАПУСК WEB-СЕРВЕРА
+# =====================================================
+
+def run_website():
+
+    port = int(
+        os.getenv(
+            "PORT",
+            "8080"
+        )
+    )
+
+    print(
+        f"🌐 Website API запущен на порту {port}"
+    )
+
+    app.run(
+        host="0.0.0.0",
+        port=port,
+        threaded=True
+    )
+
+
 # =====================================================
 # READY
 # =====================================================
+
 @bot.event
 async def on_ready():
 
@@ -1185,7 +1677,16 @@ async def on_ready():
         f"✅ Бот запущен как {bot.user}"
     )
 
+
 # =====================================================
 # START
 # =====================================================
+
+website_thread = threading.Thread(
+    target=run_website,
+    daemon=True
+)
+
+website_thread.start()
+
 bot.run(TOKEN)
