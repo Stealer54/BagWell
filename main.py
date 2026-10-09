@@ -114,43 +114,68 @@ def submit_anketa():
         }), 500
 
 
+
 async def send_anketa(data):
     channel = bot.get_channel(ANKETA_CHANNEL_ID)
 
     if channel is None:
         channel = await bot.fetch_channel(ANKETA_CHANNEL_ID)
 
-    embed = discord.Embed(
-        title="АНКЕТА",
-        color=0x2B2D31,
-        timestamp=datetime.now()
-    )
+    fields = [
+        ("Игровой ник:", "nickname"),
+        ("Игровой уровень:", "level"),
+        ("ID Аккаунта:", "account_id"),
+        ("Возраст:", "age"),
+        ("Имя:", "name"),
+        ("Город:", "city"),
+        ("Дискорд:", "discord"),
+        ("Онлайн:", "online"),
+        ("Ссылка форума:", "forum"),
+        ("Ссылка вк:", "vk"),
+        ("Ссылка на РП БИО:", "rp_bio"),
+        ("Ссылка на личное дело:", "personal_file"),
+        ("Причина постановления:", "reason"),
+        ("Занимал ли высокие должности:", "high_position"),
+        ("Привязан ли аккаунт к почте / гугл аутентификатору / ВК ЛК:", "linked"),
+        ("Имеются ли твинки на 05 сервере и были ли на них баны ( Если да, то какие ):",
+         "twinks"),
+        ("Должность, на которую будет поставлен:", "position"),
+    ]
 
-    total_chars = len(embed.title or "")
+    lines = []
 
-    for field_name, data_key in ANKETA_FIELDS:
-        value = data.get(data_key)
+    for label, key in fields:
+        value = data.get(key)
 
         if value is None or str(value).strip() == "":
             value = "Не указано"
         else:
             value = str(value).strip()
 
-        # Ограничения Discord на длину полей и всего Embed
-        available = min(1024, max(1, 5800 - total_chars - len(field_name)))
+        lines.append(f"{label} {value}")
 
-        if len(value) > available:
-            value = value[:available - 3] + "..."
+    message = "\n".join(lines)
 
-        embed.add_field(
-            name=field_name,
-            value=value,
-            inline=False
-        )
+    if len(message) <= 2000:
+        await channel.send(message)
+    else:
+        parts = []
+        current = ""
 
-        total_chars += len(field_name) + len(value)
+        for line in lines:
+            addition = line + "\n"
 
-    await channel.send(embed=embed)
+            if len(current) + len(addition) > 1990:
+                parts.append(current.rstrip())
+                current = ""
+
+            current += addition
+
+        if current.strip():
+            parts.append(current.rstrip())
+
+        for part in parts:
+            await channel.send(part)
 
 
 def run_website():
